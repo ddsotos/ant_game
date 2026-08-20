@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated simulation snapshots; measured conclusions live in PLAYTEST_LOG.md.
+sim*.json
+iter*.json
+current_iter*.json
