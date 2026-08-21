@@ -1,29 +1,39 @@
 from ant_game.cli import HumanPolicy
 from ant_game.content import EVENTS, TRAITS
 from ant_game.engine import GameEngine
-from ant_game.models import EvolutionChoice, Size
+from ant_game.models import RoundPhase, Size
 
 
-def scripted_policy(*answers: str) -> HumanPolicy:
+def scripted_policy(*answers: str):
     iterator = iter(answers)
-    return HumanPolicy(input_fn=lambda _prompt: next(iterator), output_fn=lambda _line: None)
+    output: list[str] = []
+    return HumanPolicy(input_fn=lambda _prompt: next(iterator), output_fn=output.append), output
 
 
 def test_human_policy_accepts_a_legal_size_name() -> None:
     engine = GameEngine(TRAITS, EVENTS, seed=1)
     state = engine.new_game()
-    assert scripted_policy("large").choose_size(state, engine) is Size.LARGE
+    engine.start_round(state)
+    policy, _ = scripted_policy("medium")
+    assert policy.choose_size(state, engine) is Size.MEDIUM
 
 
-def test_human_policy_can_spend_budget_on_two_cards() -> None:
+def test_human_policy_keeps_a_visible_candidate() -> None:
     engine = GameEngine(TRAITS, EVENTS, seed=1)
     state = engine.new_game()
-    choice = scripted_policy("paraponera_poneratoxin,formica_rufa_sunshield").choose_evolution(
-        state,
-        ("paraponera_poneratoxin", "formica_rufa_sunshield"),
-        2,
-        engine,
-    )
-    assert choice == EvolutionChoice(
-        ("paraponera_poneratoxin", "formica_rufa_sunshield"), ()
-    )
+    engine.start_round(state)
+    candidates = engine.choose_size(state, Size.SMALL)
+    policy, _ = scripted_policy(candidates[0])
+    assert policy.choose_retained(state, candidates, engine) == (candidates[0],)
+
+
+def test_human_policy_done_leaves_action_phase_cleanly() -> None:
+    engine = GameEngine(TRAITS, EVENTS, seed=1)
+    state = engine.new_game()
+    engine.start_round(state)
+    engine.choose_size(state, Size.SMALL)
+    engine.retain_cards(state, ())
+    policy, output = scripted_policy("done")
+    policy.take_actions(state, engine)
+    assert state.phase is RoundPhase.ACTIONS
+    assert any("C1" in line for line in output)

@@ -1,8 +1,13 @@
-# Ant evolution v0.1 prototype
+# Ant evolution v0.3 prototype
 
-This repository contains a deterministic, headless game prototype focused on the tension between immediate prosperity and evolutionary flexibility.
+This repository contains a deterministic, headless prototype about balancing
+immediate prosperity, evolutionary flexibility, specialization, and preparation
+for a forecast ecological disaster.
 
-The current code implements the archived v0.1 loop, which was rated **promising** after three consecutive independent reviews. `GAME_DESIGN.md` now defines the next, substantially revised prototype—hands, prosperity-power multipliers, extinction damage, and a hidden mass-extinction deadline—and is not implemented or validated yet.
+The current experiment lasts five rounds. Every size sees six trait cards, but
+larger species retain fewer of them. Cards build Daybreak-style evolutionary
+columns: covered cards keep their tags, while only the top card can activate.
+Most actions generate prosperity, a one-round disaster shield, or card flow.
 
 ## Play
 
@@ -10,14 +15,27 @@ The current code implements the archived v0.1 loop, which was rated **promising*
 python -m ant_game.cli --seed 42
 ```
 
-The CLI is intentionally plain. Enter size names and card IDs shown by each prompt.
+Commands during the action phase are:
+
+```text
+play CARD COLUMN
+support CARD COLUMN
+activate COLUMN [OPTION]
+status
+done
+```
+
+Columns are numbered from 1. Playing a card as support permanently gives up its
+action in exchange for its tags.
 
 ## Simulate and inspect
 
 ```powershell
 python -m ant_game.simulation --games 1000 --include-exploits
-python -m ant_game.simulation --history warning_perimeter_selective_latent --history-seed 42
+python -m ant_game.simulation --history reactive --history-seed 42
 python -m pytest -q
 ```
 
-The current design source of truth is `GAME_DESIGN.md`. `CULMINATION_TRAITS_EXPERIMENTS.md` is an incorporated experiment brief for future high-impact trait comparisons, not an implemented rule. The rules implemented by this CLI are archived in `docs/archive/2026-08-20-v0.1-promising/GAME_DESIGN.md`; accepted historical changes are in `DECISIONS.md`, and measured iterations are in `PLAYTEST_LOG.md`.
+`GAME_DESIGN.md` is the current source of truth. Historical v0.1 rules are
+archived under `docs/archive/`; experiment results and accepted decisions are
+recorded in `PLAYTEST_LOG.md` and `DECISIONS.md`.

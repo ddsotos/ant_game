@@ -282,3 +282,29 @@ Guardrails:
 - Judge representative histories for anticipation, payoff, regret, and ant-specific identity; win rates alone are insufficient.
 
 No implementation or simulation was authorized as part of this documentation update.
+
+## D-015 — v0.3: adopt the five-round Daybreak-style baseline
+
+Date: 2026-08-21
+
+Accepted by the user for implementation and first measurement:
+
+- Use five rounds with one public environment progressing I / I / II / III / IV.
+- Start Small; use four sizes, six visible normal candidates at every size, and size-dependent retention.
+- Replace flat trait slots with Daybreak-style columns. Covered cards keep root tags; only the current top ACTION can activate, once per physical card each round.
+- Allow activate → cover → activate chains and allow any normal hand card to be committed as permanent tag-only support.
+- Include both prosperity and typed one-round disaster shields in ACTION effects.
+- Attach public Extreme Adaptations to environment cards. They consume a normal retention slot, enter the ordinary hand, and then use ordinary placement rules.
+- Base player-facing cards on documented real-ant biology and retain source metadata in data definitions.
+- End every design iteration with fresh Luna reviews and a Sol recommendation; require user approval before implementing the next design change.
+
+First measured baseline settings, not final balance decisions:
+
+- Three columns of capacity five, aggressive retention 4/3/2/1, hand limit eight.
+- Prosperity multipliers 0/1/2/3.
+- Cumulative extinction threshold six and environment stage damage 0/2/4/2.
+- Three starters, thirty normal ACTION cards, four environments, and eight environment-attached Extreme Adaptations.
+
+Why:
+
+This is the smallest implementation that directly tests the approved new question: whether holding and arranging real-ant adaptations, then choosing between prosperity actions and temporary disaster shields, creates a meaningful five-round acceleration decision. The baseline values make the first simulation falsifiable and do not inherit v0.1's `promising` status.

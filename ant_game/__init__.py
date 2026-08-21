@@ -1,28 +1,44 @@
-"""Headless v0.1 game engine."""
+"""Headless v0.3 Daybreak-style ant evolution prototype."""
 
 from .engine import GameEngine, InvalidDecision
 from .models import (
+    ActionCommand,
+    ActionOption,
+    CardInstance,
+    CardRole,
+    ColumnState,
     EventCard,
     EventKind,
-    EvolutionChoice,
+    ExtremeAdaptation,
     GameState,
+    PlayedCard,
+    RoundContext,
     RoundDecision,
+    RoundPhase,
     RoundRecord,
+    ShieldSpec,
     Size,
     TraitCard,
-    TraitState,
 )
 
 __all__ = [
+    "ActionCommand",
+    "ActionOption",
+    "CardInstance",
+    "CardRole",
+    "ColumnState",
     "EventCard",
     "EventKind",
-    "EvolutionChoice",
+    "ExtremeAdaptation",
     "GameEngine",
     "GameState",
     "InvalidDecision",
+    "PlayedCard",
+    "RoundContext",
     "RoundDecision",
+    "RoundPhase",
     "RoundRecord",
+    "ShieldSpec",
     "Size",
     "TraitCard",
-    "TraitState",
 ]

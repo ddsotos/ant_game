@@ -740,3 +740,68 @@ Each primary variant receives only one or two representative cards and is compar
 ### Required qualitative evidence
 
 Representative histories must show when the card was first seen, how long it occupied the hand, when its condition became true, what was sacrificed by establishing it, how sharply scoring changed, and at least some games where delaying or rejecting it was better. The `dilemma_playtester` and `ant_trait_reviewer` must assess whether the result feels like a distinctive ant lineage rather than a large generic bonus.
+
+## v0.3 Iteration 1 — five-round Daybreak baseline
+
+### Rules and implementation
+
+- Five rounds; public environment stages I / I / II / III / IV.
+- Start Small; C3 capacity five; aggressive retention 4/3/2/1; hand limit eight.
+- Six normal candidates at every size; prosperity multipliers 0/1/2/3.
+- Top-only ACTION effects, once per physical card per round; activate → cover → activate is legal.
+- Any normal card may instead become permanent tag-only support.
+- Typed one-round shields; cumulative damage threshold six; stage damage 0/2/4/2.
+- Thirty normal real-ant ACTION cards, three starters, four environments, eight attached Extreme Adaptations.
+- Minimal solo CLI, deterministic simulator, six core bots, seven exploit probes, and 29 passing tests.
+
+### Simulations
+
+The final baseline field used 500 paired seeds for each of 13 policies. An earlier 1,000-seed smoke run used less capable sizing policies and is not used for balance comparison.
+
+| Strategy | Mean score | Survival | Win credit |
+|---|---:|---:|---:|
+| prosperity_first | 28.45 | 79.6% | 9.0% |
+| adaptability_first | 6.98 | 90.0% | 0.2% |
+| reactive | 23.83 | 91.0% | 2.3% |
+| specialist | 22.44 | 69.4% | 5.6% |
+| generalist | 24.54 | 84.2% | 3.9% |
+| random | 0.53 | 9.0% | 0.0% |
+| always_small | 0.00 | 89.8% | 0.0% |
+| always_giant | 30.25 | 43.8% | 33.3% |
+| ignore_environment | 26.79 | 51.2% | 12.7% |
+| shield_only | 2.85 | 90.4% | 0.2% |
+| dump_hand | 28.45 | 79.6% | 9.0% |
+| extreme_beeline | 23.66 | 87.8% | 3.6% |
+| final_turn_giant | 27.08 | 83.8% | 20.4% |
+
+### Representative decisions
+
+- Seed 2 / Desert Heat Wave: always-Giant reached Giant at R3, took two damage at II and four at III, and went extinct with score 18. The late-Giant policy remained Large, retained Silver Thermal Coat, and survived with score 33.
+- Seed 5 / Flood Front: always-Giant retained Solenopsis Ark and survived at damage five with score 35. The late-Giant policy used Canopy Escape, reached damage six, and went extinct at score 30. The public adaptation was not a fixed answer.
+- Seed 26 / Army Ant Raid: choosing Paraponera's shield option at R3 prevented two damage but ended at 31; the prosperity route survived and reached 41.
+- Seed 321 / Stage III: Reactive used a Megaponera shield chain to reduce raw damage four to zero, demonstrating same-round defensive chaining.
+
+### Dominant and degenerate behavior
+
+- Existing bots placed every tied card into column 0. In 500 prosperity-first games, all 10,629 placements went there, so they did not measure multi-column placement or support tradeoffs.
+- A fresh distributed-column probe scored 41.45 with 97.2% survival and 83.3% paired win credit. Maintaining three reusable top ACTION streams is currently a dominant-looking route.
+- Nearly every normal card's requirements equal its own one-copy root tags. Since self-tags count, most cards activate immediately; Foundation / Bridge / Payoff roles do not yet create the intended preparation graph.
+- Small ×0 may be a scoring cliff, but size tuning is premature while the card graph and column bots are invalid.
+- `dump_hand` exactly matched prosperity-first, so it does not isolate hand dumping.
+
+### Fresh Luna findings
+
+- balance: always-Giant and late-Giant are strong, while Small ×0 is nearly scoreless; win credit and mean score measure different survival assumptions.
+- dilemma: size/retention/shield reversals exist, but column-0 tie-breaking prevents conclusions about the tableau dilemma.
+- adversarial: a distributed-column policy dominates the measured field; no engine legality exploit was found.
+- simplicity: remove unused SUPPORT/ON_PLAY role branches later; keep typed shields and card-flow effects for now.
+- ant-trait: biological identity and sources are broadly strong, but self-satisfying requirements erase the intended Foundation→Bridge→Payoff progression.
+
+### Sol decision and approval gate
+
+Iteration 1 is not stable and does not count toward `promising`. Do not tune size multipliers or add growth costs yet. The proposed next change set is limited to:
+
+1. Keep Foundation cards broadly self-starting, but revise Bridge/Payoff requirements so at least one tag must pre-exist in the chosen column.
+2. Replace column-0 tie-breaking with column-aware diagnostic policies and counterfactual placement/action logging, while retaining a single-column exploit probe.
+
+Per the approved review process, these changes require user approval before implementation. Next test: rerun the same paired seeds after only these content/measurement corrections.

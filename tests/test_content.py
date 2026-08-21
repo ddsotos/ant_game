@@ -1,90 +1,83 @@
-"""Invariants for the v0.1 data pool.
+"""Shape and provenance invariants for the v0.3 data pool."""
 
-These tests intentionally check shape and design constraints, not balance.  The
-simulation and engine tests are the right place to evaluate numerical tuning.
-"""
+from ant_game.content import (
+    EVENTS,
+    EXTREMES,
+    NORMAL_TRAITS,
+    ROOT_TAGS,
+    STAGE_DAMAGE,
+    STARTERS,
+    TRAITS,
+)
+from ant_game.models import CardRole, EventCard, ExtremeAdaptation, TraitCard
 
-from ant_game.content import EVENTS, TRAITS
-from ant_game.models import EventKind, Size
 
-
-def test_trait_pool_has_expected_shape_and_unique_ids() -> None:
-    assert len(TRAITS) == 15
+def test_pool_counts_and_unique_ids() -> None:
+    assert len(STARTERS) == 3
+    assert len(NORMAL_TRAITS) == 30
+    assert len(TRAITS) == 33
+    assert len(EVENTS) == 4
+    assert len(EXTREMES) == 8
     assert len({card.id for card in TRAITS}) == len(TRAITS)
-    assert len({card.name for card in TRAITS}) == len(TRAITS)
-    assert sum(card.latent for card in TRAITS) == 3
-    assert sum(not card.latent for card in TRAITS) == 12
+    assert len({card.id for card in EXTREMES}) == len(EXTREMES)
+    assert len({event.id for event in EVENTS}) == len(EVENTS)
 
 
-def test_five_normal_traits_carry_high_evolution_load() -> None:
-    normal = [card for card in TRAITS if not card.latent]
-    assert 4 <= sum(card.evolution_load >= 2 for card in normal) <= 6
-    assert all(card.evolution_load >= 0 for card in TRAITS)
-    assert all(card.latent or card.trigger_tags == frozenset() for card in TRAITS)
+def test_normal_cards_are_action_and_starters_are_explicit() -> None:
+    assert all(card.role is CardRole.ACTION for card in NORMAL_TRAITS)
+    assert all(card.role is CardRole.STARTER for card in STARTERS)
+    assert all(card.role is CardRole.ACTION for card in EXTREMES)
+    assert not (set(card.id for card in NORMAL_TRAITS) & {item.id for item in EXTREMES})
 
 
-def test_latent_cards_have_explicit_triggers_and_occupy_a_slot() -> None:
-    latent = [card for card in TRAITS if card.latent]
-    assert all(card.trigger_tags for card in latent)
-    assert all(card.trigger_min_stage >= 1 for card in latent)
-    assert all("latent" in card.tags for card in latent)
+def test_only_seven_root_tags_are_used_and_all_are_represented() -> None:
+    used = set().union(*(card.root_tags for card in TRAITS + EXTREMES))
+    assert used == set(ROOT_TAGS)
+    assert all(card.root_tags <= ROOT_TAGS for card in TRAITS)
+    assert all(card.root_tags <= ROOT_TAGS for card in EXTREMES)
 
 
-def test_stage_three_latent_insurance_has_peak_scale_mitigation() -> None:
-    by_id = {card.id: card for card in TRAITS}
-    assert by_id["pheidole_ancestral_switch"].mitigation_tags["predator"] == 5
-    assert by_id["cataglyphis_thermal_sprint"].mitigation_tags["dry"] == 5
+def test_all_formal_cards_have_biology_provenance() -> None:
+    formal = (*TRAITS, *EXTREMES)
+    assert all(card.source_taxon for card in formal)
+    assert all(card.biology_basis for card in formal)
+    assert all(card.biology_source.startswith("http") for card in formal)
+    assert all(card.design_role in {"Foundation", "Bridge", "Payoff"} for card in NORMAL_TRAITS)
 
 
-def test_event_pool_has_six_waves_two_shocks_and_unique_ids() -> None:
-    assert len(EVENTS) == 8
-    assert len({card.id for card in EVENTS}) == len(EVENTS)
-    assert sum(card.kind is EventKind.WAVE for card in EVENTS) == 6
-    assert sum(card.kind is EventKind.SHOCK for card in EVENTS) == 2
+def test_action_options_are_engine_native() -> None:
+    for card in (*NORMAL_TRAITS, *EXTREMES):
+        assert card.options
+        assert all(option.text for option in card.options)
+        assert all(option.prosperity >= 0 for option in card.options)
+        assert all(option.draw_cards >= 0 and option.retain_bonus >= 0 for option in card.options)
+        assert all(shield.amount > 0 and shield.hazard_tags for option in card.options for shield in option.shields)
+        assert set(card.activation_requirements) <= ROOT_TAGS
 
 
-def test_wave_damage_curve_is_the_shared_v01_baseline() -> None:
-    waves = [card for card in EVENTS if card.kind is EventKind.WAVE]
-    for card in waves:
-        assert dict(card.stage_damage) == {1: 0, 2: 4, 3: 10, 4: 2}
-        assert card.size_damage_min_stage == 2
-    assert all(card.shock_damage == 0 for card in waves)
+def test_every_environment_has_two_attached_extremes_and_five_round_curve() -> None:
+    assert STAGE_DAMAGE == {1: 0, 2: 2, 3: 4, 4: 2}
+    extreme_ids = {card.id for card in EXTREMES}
+    attached_ids: set[str] = set()
+    for event in EVENTS:
+        assert isinstance(event, EventCard)
+        assert dict(event.stage_damage) == STAGE_DAMAGE
+        assert len(event.extreme_adaptations) == 2
+        assert all(isinstance(item, ExtremeAdaptation) for item in event.extreme_adaptations)
+        ids = {item.id for item in event.extreme_adaptations}
+        assert not attached_ids & ids
+        attached_ids |= ids
+    assert attached_ids == extreme_ids
 
 
-def test_exactly_two_event_order_interactions() -> None:
-    interactions = [card for card in EVENTS if card.sequence_prev_tag is not None]
-    assert len(interactions) == 2
-    assert all(card.sequence_damage_bonus > 0 for card in interactions)
-    assert len({card.sequence_prev_tag for card in interactions}) == 2
-
-
-def test_pool_contains_size_context_and_positive_event_hooks() -> None:
-    assert any(card.size_damage for card in EVENTS)
-    assert any(card.prosperity_modifier > 0 for card in EVENTS)
-    assert any("prosperity_target" in card.tags for card in EVENTS)
-    assert any(card.effect_id for card in TRAITS)
-    assert all(card.text and "." in card.text for card in TRAITS + EVENTS)
-
-
-def test_small_relief_is_event_specific() -> None:
-    by_id = {card.id: card for card in EVENTS}
-    small_relief = {card.id for card in EVENTS if card.size_damage.get(Size.SMALL) == -4}
-    medium_relief = {card.id for card in EVENTS if card.size_damage.get(Size.MEDIUM) == -3}
-    assert small_relief == {"anteater_boom", "fungal_infection_expansion"}
-    assert medium_relief == {"parasitoid_fly_radiation", "long_drought"}
-    assert by_id["rain_cycle"].size_damage.get(Size.SMALL, 0) == 0
-    assert by_id["invasive_ant_incursion"].size_damage[Size.SMALL] == 1
-
-
-def test_one_shot_last_defense_is_stronger_than_persistent_gate() -> None:
-    by_id = {card.id: card for card in TRAITS}
-    assert by_id["eciton_living_span"].evolution_load == 1
-    assert by_id["cephalotes_living_gate"].mitigation_tags["competition"] == 4
-    assert by_id["colobopsis_last_defense"].mitigation_tags["competition"] == 5
-
-
-def test_latent_insurance_has_dormant_load() -> None:
-    latent = [card for card in TRAITS if card.latent]
-    assert all(card.evolution_load == 1 for card in latent)
-    by_id = {card.id: card for card in TRAITS}
-    assert by_id["cephalotes_living_gate"].mitigation_tags["competition"] == 4
+def test_hazard_tags_are_not_root_tags() -> None:
+    hazards = set().union(*(event.hazard_tags for event in EVENTS))
+    shield_hazards = {
+        hazard
+        for card in (*NORMAL_TRAITS, *EXTREMES)
+        for option in card.options
+        for shield in option.shields
+        for hazard in shield.hazard_tags
+    }
+    assert not hazards & set(ROOT_TAGS)
+    assert not shield_hazards & set(ROOT_TAGS)
