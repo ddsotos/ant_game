@@ -39,6 +39,6 @@ def test_human_policy_done_leaves_action_phase_cleanly() -> None:
     assert any("C1" in line for line in output)
 
 
-def test_environment_list_is_available_without_starting_a_game(capsys) -> None:
-    assert main(["--list-environments"]) == 0
-    assert "flood_front" in capsys.readouterr().out
+def test_disaster_list_is_available_without_starting_a_game(capsys) -> None:
+    assert main(["--list-disasters"]) == 0
+    assert "flood_torrent" in capsys.readouterr().out

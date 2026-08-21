@@ -880,3 +880,37 @@ With these effects and the still-experimental Payoff requirement +2, a 100 paire
 - 36 automated tests pass, including Japanese content coverage, starter activation, deterministic bot parity, and a complete five-round browser-service flow.
 
 This is a player-access correction, not a stable balance iteration, and does not count toward `promising`. Human play feedback is the next required evidence.
+
+## v0.4 Human-play baseline — public disasters and Optimization
+
+### Authorized rules
+
+- Five rounds; choose five unique disasters from eight by seed and reveal the complete order at setup.
+- Roll one d6 per current hazard tag before size, retention, placement, and activation decisions.
+- Add size-multiplied prosperity, subtract `2^n` for each uncovered hazard, floor at zero, then floor-halve the remaining score when the printed Optimization is unmet.
+- Remove stages, extinction, cumulative damage, separate Extreme cards, and card-based retention bonuses.
+- Count only other cards in the same column for top-card activation. Count the entire board for disaster Optimization.
+- Use one-to-three-tag real-ant cards, unconditional Foundation/Bridge actions, and asymmetric/cross-tag Payoff conditions.
+
+### Implementation evidence
+
+- Headless engine and browser service are deterministic for a supplied seed.
+- Eight disasters each contain a named, biology-derived Optimization and one or two typed hazards.
+- Thirty normal traits plus three starters use the seven fixed root tags and retain biology metadata.
+- Final integration review found that no card could answer the `drought` hazard; existing liquid-storage and underground-granary cards now provide typed drought shields so every hazard offers at least one player response.
+- The Japanese browser displays all five forecasts, die rolls, typed shields, Optimization progress, self-tags versus activation tags, 1–3-color bands, and the complete score-resolution order.
+- The research catalog records the current ant taxa, biological basis, sources, and future candidates.
+- 39 automated tests passed, including five-round completion, unique deterministic forecasts, top-card tag exclusion, exponential loss, zero floor, score halving, every hazard having a player shield, hand-space-aware retention display, structured tag presentation, Japanese coverage, and real HTTP service behavior.
+- A live HTTP smoke check on seed 42 returned the v0.4 server, five distinct forecast cards, and a visible first-round hazard roll.
+
+### Simulation and review status
+
+No multi-game NPC balance simulation was run for this iteration. This is intentional: the user asked to skip NPC play and reach a human-playable state. Existing strategy code was only migrated so it does not depend on removed fields; its small unit tests are engineering checks, not balance evidence.
+
+The engine, content, and browser work were independently implemented/reviewed by narrow Luna subagents. Their scope was schema correctness, real-ant content, and human-readable interaction—not a claim that the new economy is balanced.
+
+### Current design status
+
+This iteration does not count toward the three stable reviews required for `promising`. There is not yet a representative human decision log. In particular, the severity of `2^n`, the attainability of five public Optimization targets, and the usefulness of Small versus Giant remain open questions.
+
+Next test: the player completes several seeds in the Japanese browser and records specific moments where prosperity, shield activation, size, placement, and future Optimization offered competing choices. Select at most one to three changes from that evidence.

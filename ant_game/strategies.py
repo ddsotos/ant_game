@@ -27,7 +27,6 @@ class Strategy:
 
     def choose_retained(self, state: GameState, candidates: tuple[str, ...], engine) -> tuple[str, ...]:
         choices = list(candidates)
-        choices.extend(item.id for item in engine.eligible_extremes(state))
         limit = min(engine.retention_limit(state), engine.hand_limit - len(state.hand))
         ranked = sorted(
             choices,
@@ -68,36 +67,33 @@ class Strategy:
         return option_value + 0.3 * len(card.root_tags) - requirement_cost
 
     def option_value(self, option: ActionOption, state: GameState, engine) -> float:
-        event = engine.current_event(state)
-        shield_total = sum(
-            shield.amount for shield in option.shields
-            if shield.hazard_tags & event.hazard_tags
-        )
         context = state.current_round
-        raw_damage = event.stage_damage.get(context.stage, 0) if context else 0
-        existing = sum(
-            shield.amount for shield in (context.shields if context else ())
-            if shield.hazard_tags & event.hazard_tags
-        )
-        applicable = min(shield_total, max(0, raw_damage - existing))
+        applicable = 0
+        if context:
+            for shield in option.shields:
+                existing = sum(
+                    item.amount for item in context.shields
+                    if item.hazard_tag == shield.hazard_tag
+                )
+                applicable += min(
+                    shield.amount,
+                    max(0, context.hazard_rolls.get(shield.hazard_tag, 0) - existing),
+                )
         return (
             self.prosperity_weight * option.prosperity * max(1, state.size.prosperity_multiplier)
             + self.shield_weight * applicable
             + 0.7 * option.draw_cards
-            + 0.6 * option.retain_bonus
         )
 
     def hold_option_value(self, option: ActionOption, state: GameState, engine) -> float:
-        event = engine.current_event(state)
         applicable = sum(
             shield.amount for shield in option.shields
-            if shield.hazard_tags & event.hazard_tags
+            if shield.hazard_tag in engine.current_disaster(state).hazard_tags
         )
         return (
             self.prosperity_weight * option.prosperity * max(1, state.size.prosperity_multiplier)
             + self.shield_weight * applicable
             + 0.7 * option.draw_cards
-            + 0.6 * option.retain_bonus
         )
 
     def _activate_best(self, state: GameState, engine, column_index: int) -> bool:
@@ -131,7 +127,6 @@ class Strategy:
                 continue
             for column_index in range(len(state.columns)):
                 tags = engine.column_tags(state, column_index)
-                tags.update(card.root_tags)
                 requirements_met = all(
                     tags[tag] >= count
                     for tag, count in card.activation_requirements.items()
@@ -161,7 +156,7 @@ class Strategy:
         if top is None:
             return -10.0
         top_card = engine.traits[top.card_id]
-        before = engine.column_tags(state, column_index)
+        before = engine.activation_tags(state, column_index)
         missing_before = sum(
             max(0, amount - before[tag])
             for tag, amount in top_card.activation_requirements.items()
@@ -215,10 +210,8 @@ class Reactive(Strategy):
 
     def choose_size(self, state, engine):
         context = state.current_round
-        stage = context.stage if context else engine.current_stage(state)
-        raw = engine.current_event(state).stage_damage.get(stage, 0)
-        remaining = engine.extinction_threshold - state.cumulative_damage
-        target = Size.SMALL if raw >= remaining else Size.LARGE
+        pressure = sum(context.hazard_rolls.values()) if context else 0
+        target = Size.SMALL if pressure >= 5 else Size.LARGE
         return self.step_toward(state, engine, target)
 
 
@@ -264,7 +257,7 @@ class RandomStrategy(Strategy):
         return self.rng.choice(engine.legal_sizes(state))
 
     def choose_retained(self, state, candidates, engine):
-        choices = list(candidates) + [item.id for item in engine.eligible_extremes(state)]
+        choices = list(candidates)
         self.rng.shuffle(choices)
         limit = min(engine.retention_limit(state), engine.hand_limit - len(state.hand))
         return tuple(choices[: self.rng.randint(0, min(limit, len(choices)))])
@@ -328,9 +321,7 @@ class ExtremeBeeline(Reactive):
     name = "extreme_beeline"
 
     def card_value(self, card, state, engine):
-        return super().card_value(card, state, engine) + (
-            12 if card.design_role == "Extreme" else 0
-        )
+        return super().card_value(card, state, engine)
 
 
 class FinalTurnGiant(Reactive):

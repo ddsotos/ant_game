@@ -9,14 +9,14 @@ from collections import Counter, defaultdict
 from dataclasses import asdict
 from typing import Any, Iterable
 
-from .content import EVENTS, EXTREMES, TRAITS
+from .content import DISASTERS, TRAITS
 from .engine import GameEngine
 from .models import GameState, Size
 from .strategies import make_strategy, strategy_names
 
 
 def make_engine(seed: int, **settings: Any) -> GameEngine:
-    return GameEngine(TRAITS, EVENTS, seed=seed, **settings)
+    return GameEngine(TRAITS, DISASTERS, seed=seed, **settings)
 
 
 def play_game(strategy: str, seed: int, **settings: Any) -> GameState:
@@ -26,7 +26,6 @@ def play_game(strategy: str, seed: int, **settings: Any) -> GameState:
 
 def _game_metrics(
     state: GameState,
-    extreme_ids: set[str],
     design_roles: dict[str, str],
 ) -> dict[str, Any]:
     history = state.history
@@ -37,8 +36,11 @@ def _game_metrics(
     ]
     activation_roles = Counter(design_roles.get(card_id, "Unknown") for card_id in activated_ids)
     size_counts = Counter(row.size.name.lower() for row in history)
-    shield_granted = sum(row.shield_amount for row in history)
-    shield_used = sum(min(row.raw_damage, row.shield_amount) for row in history)
+    shield_granted = sum(sum(row.defense_by_hazard.values()) for row in history)
+    shield_used = sum(
+        sum(min(row.hazard_rolls[tag], amount) for tag, amount in row.defense_by_hazard.items())
+        for row in history
+    )
     before_peak = history[:3]
     peak_and_after = history[3:]
 
@@ -47,8 +49,8 @@ def _game_metrics(
 
     return {
         "score": state.prosperity,
-        "survived": not any(row.extinct for row in history),
-        "extinction_round": next((row.round_number for row in history if row.extinct), None),
+        "survived": True,
+        "extinction_round": None,
         "rounds_played": len(history),
         "size_counts": dict(size_counts),
         "size_changes": sum(row.size != row.size_before for row in history),
@@ -59,14 +61,14 @@ def _game_metrics(
         "foundation_activated": activation_roles["Foundation"],
         "bridge_activated": activation_roles["Bridge"],
         "payoff_activated": activation_roles["Payoff"],
-        "extreme_activated": activation_roles["Extreme"],
+        "extreme_activated": 0,
         "push_outs": sum(len(row.pushed_out) for row in history),
-        "extremes_retained": sum(card_id in extreme_ids for card_id in retained),
+        "extremes_retained": 0,
         "shield_granted": shield_granted,
         "shield_used": shield_used,
         "shield_surplus": shield_granted - shield_used,
-        "raw_damage": sum(row.raw_damage for row in history),
-        "damage": sum(row.damage for row in history),
+        "raw_damage": sum(sum(row.hazard_rolls.values()) for row in history),
+        "damage": sum(row.hazard_penalty for row in history),
         "max_action_chain": max(
             (sum(action["kind"] == "activate" for action in row.actions) for row in history),
             default=0,
@@ -143,32 +145,26 @@ def simulate_strategies(
         raise ValueError("strategies must be a non-empty unique sequence")
     per_strategy: dict[str, list[dict[str, Any]]] = defaultdict(list)
     wins = Counter()
-    extreme_ids = {item.id for item in EXTREMES}
-    design_roles = {
-        card.id: card.design_role for card in (*TRAITS, *(item.as_trait() for item in EXTREMES))
-    }
+    design_roles = {card.id: card.design_role for card in TRAITS}
     for seed in range(seed_start, seed_start + games):
         states = {name: play_game(name, seed, **settings) for name in names}
-        best_key = max(
-            (not state.history[-1].extinct, state.prosperity)
-            for state in states.values()
-        )
+        best_key = max(state.prosperity for state in states.values())
         winners = [
             name for name, state in states.items()
-            if ((not state.history[-1].extinct), state.prosperity) == best_key
+            if state.prosperity == best_key
         ]
         credit = 1 / len(winners)
         for winner in winners:
             wins[winner] += credit
         for name, state in states.items():
-            per_strategy[name].append(_game_metrics(state, extreme_ids, design_roles))
+            per_strategy[name].append(_game_metrics(state, design_roles))
     return {
         "metadata": {
             "games_per_strategy": games,
             "seed_start": seed_start,
             "rounds": 5,
             "paired_seeds": True,
-            "win_definition": "survival first, then prosperity; ties split",
+            "win_definition": "prosperity; ties split",
             "strategies": list(names),
             "settings": settings,
         },
@@ -194,27 +190,25 @@ def history_as_dict(state: GameState) -> dict[str, Any]:
         rows.append(data)
     return {
         "seed": state.seed,
-        "environment": state.environment_id,
+        "disasters": list(state.disaster_ids),
         "score": state.prosperity,
-        "cumulative_damage": state.cumulative_damage,
         "rounds": rows,
     }
 
 
 def history_as_text(state: GameState) -> str:
     lines = [
-        f"seed={state.seed} environment={state.environment_id} "
-        f"score={state.prosperity} damage={state.cumulative_damage}"
+        f"seed={state.seed} disasters={','.join(state.disaster_ids)} score={state.prosperity}"
     ]
     for row in state.history:
         actions = ",".join(action["kind"] for action in row.actions) or "-"
         retained = ",".join(row.retained) or "-"
         lines.append(
-            f"R{row.round_number} stage={row.stage} size={row.size.name:<6} "
+            f"R{row.round_number} disaster={row.disaster_id} size={row.size.name:<6} "
             f"keep=[{retained}] actions=[{actions}] "
-            f"shield={row.shield_amount} damage={row.damage}/{row.raw_damage} "
+            f"rolls={dict(row.hazard_rolls)} penalty={row.hazard_penalty} "
             f"prosperity={row.prosperity_delta:+d} total={row.total_prosperity} "
-            f"extinct={row.extinct}"
+            f"optimization={row.optimization_met}"
         )
     return "\n".join(lines)
 

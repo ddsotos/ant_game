@@ -1,64 +1,52 @@
-# Ant evolution v0.3 prototype
+# アリ進化ゲーム v0.4 プロトタイプ
 
-This repository contains a deterministic, headless prototype about balancing
-immediate prosperity, evolutionary flexibility, specialization, and preparation
-for a forecast ecological disaster.
+実在するアリの適応を進化列へ積み、目先の繁栄、災害への防御、将来の最適化を競わせる5ラウンドの実験ゲームです。
 
-The current experiment lasts five rounds. Every size sees six trait cards, but
-larger species retain fewer of them. Cards build Daybreak-style evolutionary
-columns: covered cards keep their tags, while only the top card can activate.
-Most actions generate prosperity, a one-round disaster shield, or card flow.
+現在の版では、8枚の災害からseedで選ばれた5枚を最初から公開します。各ラウンドの災害強度は行動前に1d6で決まり、カードの起動、防御、タグ構築を考えて対応します。
 
-## Play in a browser（ブラウザで遊ぶ）
+## ブラウザで遊ぶ
 
-No package installation or frontend build is required. Run:
+追加パッケージやフロントエンドのビルドは不要です。PowerShellでリポジトリへ移動し、次を実行してください。
 
 ```powershell
 python -m ant_game.webapp
 ```
 
-The Japanese game screen opens at `http://127.0.0.1:8000/`. Keep the terminal
-open while playing; press `Ctrl+C` there to stop the server. If the browser does
-not open automatically, open that address yourself.
+日本語のゲーム画面が `http://127.0.0.1:8000/` で開きます。終了するには、起動したPowerShellで `Ctrl+C` を押してください。ブラウザが自動で開かなければ、上のURLを手動で開いてください。
 
-## Play in the CLI
+画面には次の情報が表示されます。
+
+- 5ラウンド分の災害予報と各最適化条件
+- 現在の1d6出目とタグ別シールド
+- サイズ、公開カード、手札、3本の進化列
+- カード自身のタグと、自身を除いた起動条件
+- 繁栄加算、指数減点、最適化失敗時半減の精算内訳
+
+## 基本操作
+
+各ラウンドでは次の順に操作します。
+
+1. サイズを選ぶ。
+2. 公開された6枚からカードを保持する。
+3. 手札を列の先頭へ置く、または先頭直下へ支援として置く。
+4. 条件を満たす列の先頭カードを起動する。
+5. 任意のタイミングでラウンドを精算する。
+
+大型ほど繁栄倍率は高くなりますが、保持できるカードが減ります。支援カードと覆われたカードは効果を使えませんが、タグを供給し続けます。
+
+## デバッグ用CLI
 
 ```powershell
 python -m ant_game.cli --seed 42
+python -m ant_game.cli --list-disasters
 ```
 
-The disaster is selected from the seed. To list or fix it explicitly:
+ブラウザ版が人間向けの標準画面です。CLIはゲームロジック確認用に残しています。
+
+## テスト
 
 ```powershell
-python -m ant_game.cli --list-environments
-python -m ant_game.cli --seed 42 --environment desert_heat_wave
-```
-
-Commands during the action phase are:
-
-```text
-play CARD COLUMN
-support CARD COLUMN
-activate COLUMN [OPTION]
-card CARD
-status
-help
-done
-```
-
-Columns are numbered from 1. Playing a card as support permanently gives up its
-action in exchange for its tags. The CLI also accepts the Japanese command
-aliases `置く`, `支援`, `起動`, `カード`, `状態`, and `終了`. Press Enter at the
-retention prompt to keep no cards.
-
-## Simulate and inspect
-
-```powershell
-python -m ant_game.simulation --games 1000 --include-exploits
-python -m ant_game.simulation --history reactive --history-seed 42
 python -m pytest -q
 ```
 
-`GAME_DESIGN.md` is the current source of truth. Historical v0.1 rules are
-archived under `docs/archive/`; experiment results and accepted decisions are
-recorded in `PLAYTEST_LOG.md` and `DECISIONS.md`.
+`GAME_DESIGN.md` が現行ルールの正本です。過去の実験結果は `PLAYTEST_LOG.md`、採用判断は `DECISIONS.md`、アリ題材と出典は `ANT_RESEARCH_CATALOG.md` に記録しています。

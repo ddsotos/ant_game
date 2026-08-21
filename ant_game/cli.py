@@ -5,12 +5,9 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 
-from .content import EVENTS, TRAITS
+from .content import DISASTERS, TRAITS
 from .engine import GameEngine, InvalidDecision
 from .models import GameState, Size
-
-
-STAGE_NAMES = {1: "I", 2: "II", 3: "III", 4: "IV"}
 
 
 class HumanPolicy:
@@ -26,23 +23,24 @@ class HumanPolicy:
         self._show_last_round(state)
         context = state.current_round
         assert context is not None
-        event = engine.current_event(state)
+        disaster = engine.current_disaster(state)
         self.say("\n" + "=" * 68)
         self.say(
-            f"ラウンド {context.round_number}/5  環境: {event.name}  "
-            f"Stage {STAGE_NAMES[context.stage]}  基礎ダメージ {event.stage_damage.get(context.stage, 0)}"
+            f"ラウンド {context.round_number}/5  災害: {disaster.name}  "
+            f"出目 {context.hazard_rolls}"
         )
         forecast = " / ".join(
-            f"R{round_number}:{STAGE_NAMES[stage]}={event.stage_damage.get(stage, 0)}"
-            for round_number, stage in enumerate(engine.STAGES, start=1)
+            f"R{number}:{engine.disasters[item].name}"
+            for number, item in enumerate(state.disaster_ids, start=1)
         )
         self.say(f"予報: {forecast}")
         self.say(
-            f"繁栄 {state.prosperity}  累積ダメージ "
-            f"{state.cumulative_damage}/{engine.extinction_threshold}  "
-            f"手札 {len(state.hand)}/{engine.hand_limit}"
+            f"繁栄 {state.prosperity}  手札 {len(state.hand)}/{engine.hand_limit}"
         )
-        self._show_public_extremes(state, engine)
+        self.say(
+            "最適化: " + disaster.optimization.name + " [" +
+            self._requirements(disaster.optimization.required_root_tags) + "]"
+        )
 
         legal = engine.legal_sizes(state)
         self.say("\nサイズを選択:")
@@ -68,13 +66,7 @@ class HumanPolicy:
         for instance_id in candidates:
             self._show_card(engine.traits[instance_id], prefix=f"  {instance_id}")
 
-        extremes = engine.eligible_extremes(state)
-        if extremes:
-            self.say("\n取得可能な環境適応（通常保持枠を1つ使用）:")
-            for item in extremes:
-                self._show_card(item.as_trait(), prefix=f"  {item.id}")
-
-        available = set(candidates) | {item.id for item in extremes}
+        available = set(candidates)
         limit = min(engine.retention_limit(state), engine.hand_limit - len(state.hand))
         while True:
             raw = self.ask(
@@ -181,27 +173,15 @@ class HumanPolicy:
                         f"条件[{self._requirements(card.activation_requirements)}]"
                     )
 
-    def _show_public_extremes(self, state: GameState, engine: GameEngine) -> None:
-        eligible = {item.id for item in engine.eligible_extremes(state)}
-        self.say("公開中の環境適応:")
-        for item in engine.public_extremes(state):
-            status = "取得可能" if item.id in eligible else "未達"
-            self.say(
-                f"  {item.id}: {item.name} [{status}; "
-                f"{self._requirements(item.required_root_tags)}]"
-            )
-            for option_index, option in enumerate(item.options, start=1):
-                self.say(f"     起動{option_index}: {self._option_summary(option)}")
-
     def _show_last_round(self, state: GameState) -> None:
         if not state.history:
             return
         row = state.history[-1]
         self.say("\n前ラウンド結果:")
         self.say(
-            f"  R{row.round_number} Stage {STAGE_NAMES[row.stage]}  size={row.size.name}  "
-            f"damage={row.damage}/{row.raw_damage}（shield {row.shield_amount}）  "
-            f"prosperity=+{row.prosperity_delta}  total={row.total_prosperity}"
+            f"  R{row.round_number} {row.disaster_id} size={row.size.name}  "
+            f"災害減点={row.hazard_penalty} 最適化={'達成' if row.optimization_met else '未達'}  "
+            f"繁栄=+{row.prosperity_delta}  total={row.total_prosperity}"
         )
         if row.pushed_out:
             self.say("  押し出されたカード: " + ", ".join(row.pushed_out))
@@ -238,40 +218,36 @@ class HumanPolicy:
             effects.append(f"繁栄+{option.prosperity}")
         for shield in option.shields:
             effects.append(
-                f"{'+'.join(sorted(shield.hazard_tags))}シールド+{shield.amount}"
+                f"{shield.hazard_tag}シールド+{shield.amount}"
             )
         if option.draw_cards:
             effects.append(f"即時ドロー+{option.draw_cards}")
-        if option.retain_bonus:
-            effects.append(f"次R保持+{option.retain_bonus}")
         return " / ".join(effects) or "数値効果なし"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--environment", choices=tuple(event.id for event in EVENTS))
     parser.add_argument(
-        "--list-environments",
+        "--list-disasters",
         action="store_true",
-        help="環境IDを表示して終了",
+        help="災害IDを表示して終了",
     )
     args = parser.parse_args(argv)
-    if args.list_environments:
-        for event in EVENTS:
-            print(f"{event.id}: {event.name}")
+    if args.list_disasters:
+        for disaster in DISASTERS:
+            print(f"{disaster.id}: {disaster.name}")
         return 0
 
-    engine = GameEngine(TRAITS, EVENTS, seed=args.seed)
-    state = engine.new_game(environment_id=args.environment)
+    engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
+    state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.3 — 5ラウンド試作")
-    print("開始時に環境と全5ラウンドのダメージ予報が公開されます。")
+    print("アリ進化ゲーム v0.4 — 5ラウンド試作")
+    print("開始時に全5ラウンドの災害と最適化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)
     print(
-        f"\n最終結果: 繁栄={state.prosperity}  累積ダメージ={state.cumulative_damage}  "
-        f"{'絶滅' if state.history[-1].extinct else '生存'}"
+        f"\n最終結果: 繁栄={state.prosperity}"
     )
     return 0
 

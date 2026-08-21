@@ -1,4 +1,4 @@
-"""Data models for the v0.3 Daybreak-style ant evolution prototype."""
+"""Data models for the five-round ant adaptation prototype."""
 
 from __future__ import annotations
 
@@ -35,13 +35,20 @@ class RoundPhase(str, Enum):
     RETAIN = "retain"
     ACTIONS = "actions"
     COMPLETE = "complete"
-    EXTINCT = "extinct"
 
 
 @dataclass(frozen=True, slots=True)
 class ShieldSpec:
-    hazard_tags: frozenset[str] = frozenset()
-    amount: int = 0
+    """A one-round defense against exactly one hazard tag."""
+
+    hazard_tag: str
+    amount: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.hazard_tag, str) or not self.hazard_tag:
+            raise ValueError("a shield must name exactly one hazard tag")
+        if self.amount <= 0:
+            raise ValueError("shield amount must be positive")
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +58,6 @@ class ActionOption:
     prosperity: int = 0
     shields: tuple[ShieldSpec, ...] = ()
     draw_cards: int = 0
-    retain_bonus: int = 0
     text: str = ""
 
 
@@ -75,48 +81,38 @@ class TraitCard:
 
 
 @dataclass(frozen=True, slots=True)
-class ExtremeAdaptation:
-    id: str
+class OptimizationRequirement:
+    """A disaster-specific board target, printed on the disaster card."""
+
     name: str
-    root_tags: frozenset[str] = frozenset()
-    role: CardRole = CardRole.ACTION
-    activation_requirements: Mapping[str, int] = field(default_factory=dict)
-    options: tuple[ActionOption, ...] = ()
     required_root_tags: Mapping[str, int] = field(default_factory=dict)
-    unlock_stage: int = 1
     source_taxon: str = ""
     biology_basis: str = ""
     biology_source: str = ""
     text: str = ""
 
-    def as_trait(self) -> TraitCard:
-        return TraitCard(
-            id=self.id,
-            name=self.name,
-            root_tags=self.root_tags,
-            role=self.role,
-            activation_requirements=self.activation_requirements,
-            options=self.options,
-            source_taxon=self.source_taxon,
-            biology_basis=self.biology_basis,
-            biology_source=self.biology_source,
-            design_role="Extreme",
-            text=self.text,
-        )
-
-
-class EventKind(str, Enum):
-    ENVIRONMENT = "environment"
+    def __post_init__(self) -> None:
+        if not self.name:
+            raise ValueError("optimization must have a name")
+        if not self.required_root_tags:
+            raise ValueError("optimization must require at least one root tag")
+        if any(not tag or amount <= 0 for tag, amount in self.required_root_tags.items()):
+            raise ValueError("optimization tag requirements must be positive")
 
 
 @dataclass(frozen=True, slots=True)
-class EventCard:
+class DisasterCard:
     id: str
     name: str
-    hazard_tags: frozenset[str] = frozenset()
-    stage_damage: Mapping[int, int] = field(default_factory=dict)
-    extreme_adaptations: tuple[str | ExtremeAdaptation, ...] = ()
+    hazard_tags: frozenset[str]
+    optimization: OptimizationRequirement
     text: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.id or not self.name:
+            raise ValueError("disaster must have an id and name")
+        if not self.hazard_tags or any(not isinstance(tag, str) or not tag for tag in self.hazard_tags):
+            raise ValueError("disaster must have at least one hazard tag")
 
     @property
     def tags(self) -> frozenset[str]:
@@ -127,14 +123,12 @@ class EventCard:
 class CardInstance:
     instance_id: str
     card_id: str
-    origin_event_id: str | None = None
 
 
 @dataclass(slots=True)
 class PlayedCard:
     instance_id: str
     card_id: str
-    origin_event_id: str | None = None
     is_support: bool = False
     activated_round: int | None = None
 
@@ -151,8 +145,8 @@ class ColumnState:
 @dataclass(slots=True)
 class RoundContext:
     round_number: int
-    stage: int
-    environment_id: str
+    disaster_id: str
+    hazard_rolls: dict[str, int] = field(default_factory=dict)
     size_before: Size = Size.SMALL
     candidate_ids: tuple[str, ...] = ()
     candidate_instances: list[CardInstance] = field(default_factory=list)
@@ -161,7 +155,6 @@ class RoundContext:
     prosperity_base: int = 0
     shields: list[ShieldSpec] = field(default_factory=list)
     bonus_draws: int = 0
-    retention_bonus: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,23 +175,28 @@ class RoundDecision:
 @dataclass(frozen=True, slots=True)
 class RoundRecord:
     round_number: int
-    stage: int
-    environment_id: str
+    disaster_id: str
     size_before: Size
     size: Size
     candidates: tuple[str, ...]
     retained: tuple[str, ...]
     actions: tuple[dict[str, Any], ...]
     pushed_out: tuple[str, ...]
-    raw_damage: int
-    shield_amount: int
-    shield_details: tuple[ShieldSpec, ...]
-    damage: int
+    hazard_rolls: Mapping[str, int]
+    defense_by_hazard: Mapping[str, int]
+    unblocked_by_hazard: Mapping[str, int]
+    penalty_by_hazard: Mapping[str, int]
+    hazard_penalty: int
     prosperity_base: int
     prosperity_delta: int
+    score_before: int
+    score_after_prosperity: int
+    score_after_hazard: int
+    optimization_met: bool
+    optimization_required_tags: Mapping[str, int]
+    optimization_actual_tags: Mapping[str, int]
+    optimization_half_loss: int
     total_prosperity: int
-    cumulative_damage: int
-    extinct: bool
     hand_after: tuple[str, ...]
     columns_after: tuple[tuple[str, ...], ...]
 
@@ -209,19 +207,16 @@ class GameState:
     round_number: int = 0
     size: Size = Size.SMALL
     prosperity: int = 0
-    cumulative_damage: int = 0
     hand: list[CardInstance] = field(default_factory=list)
     columns: list[ColumnState] = field(default_factory=list)
-    environment_id: str = ""
-    claimed_extreme_ids: set[str] = field(default_factory=set)
+    disaster_ids: tuple[str, ...] = ()
     trait_deck: list[CardInstance] = field(default_factory=list)
     trait_discard: list[CardInstance] = field(default_factory=list)
     history: list[RoundRecord] = field(default_factory=list)
     phase: RoundPhase = RoundPhase.IDLE
     current_round: RoundContext | None = None
     rng_state: Any = None
-    next_retention_bonus: int = 0
 
     @property
     def finished(self) -> bool:
-        return self.phase in (RoundPhase.COMPLETE, RoundPhase.EXTINCT)
+        return self.phase is RoundPhase.COMPLETE

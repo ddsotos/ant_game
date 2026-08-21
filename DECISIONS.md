@@ -327,3 +327,27 @@ Why:
 The previous starters displayed activation conditions but had no legal action options, so the very first board taught the player that visible cards could not be used. The browser client removes command memorization and presents the forecast, cards, columns, tags, legal actions, and round result in one Japanese play surface without changing the headless rules or adding a frontend dependency.
 
 A universal starter shield was briefly implemented but rejected before commit: it raised every deterministic non-random bot to 100% survival in a 100-seed smoke simulation and made disaster preparation largely automatic.
+
+## D-017 — v0.4: replace staged environments with public disaster forecasts
+
+Date: 2026-08-22
+
+Accepted by direct user request:
+
+- Replace the single I / I / II / III / IV environment with five unique disasters selected from eight and revealed in order at game start.
+- At each round start, roll 1d6 for every hazard tag on the current disaster and reveal the result before the player acts.
+- Resolve uncovered hazard amount `n` as a `2^n` prosperity loss, with prosperity never falling below zero.
+- Remove extinction, cumulative damage, stage progression, and separate Extreme/Trump cards.
+- Print a named Optimization requirement on every disaster. Count tags across the full board; failure halves the remaining score instead of causing extinction.
+- Exclude the top card's own tags from its activation requirement and count only other cards in the same column.
+- Make Foundation and Bridge actions unconditional; retain deliberately asymmetric, biology-derived requirements on Payoffs.
+- Allow one to three root tags per card and use cross-tag requirements where the real-ant behavior supports them.
+- Replace all card-based retention bonuses with an immediate one-card draw. Preserve the size retention curve.
+- Keep five rounds and deliver this version directly as a Japanese browser game for human evaluation, without an intervening NPC balance iteration.
+- Present root tags with fixed colors and distinct symbols, and use multicolor bands for multi-tag cards without copying an existing game's trade dress.
+
+Why:
+
+The staged environment had become burdened with multiple coupled subsystems and made the user wait for simulation evidence before personally judging the game. The new structure exposes all five strategic targets immediately while the die roll creates a different short-term defensive problem each round. Optimization reuses the existing board-tag mechanism, and failure affects the same prosperity score rather than introducing a separate death track.
+
+This is a structural redesign and resets prior balance conclusions. It is a human-play baseline, not a `promising` result. The next accepted changes should be based first on concrete human play decisions and should remain limited to one to three targeted adjustments.

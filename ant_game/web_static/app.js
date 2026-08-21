@@ -1,150 +1,21 @@
-let gameId = null;
-let state = null;
-let retained = new Set();
+let gameId=null,state=null;let retained=new Set();
+const $=s=>document.querySelector(s);const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+async function api(path,data=null){const options=data?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}:{};const response=await fetch(path,options);const result=await response.json();if(!response.ok)throw new Error(result.error||"通信に失敗しました。");return result}
+function notice(message,error=false){const box=$("#notice");box.textContent=message||"";box.className=message?(error?"error":"message"):""}
+function tagHTML(tag,count=null){const value=count??tag.count;return `<span class="tag ${tag.id==="Resource Ecology"?"resource":""}" style="--tag-color:${esc(tag.color)}"><svg aria-hidden="true"><use href="#symbol-${esc(tag.symbol)}"></use></svg>${esc(tag.name)}${value!=null?` ${value}`:""}</span>`}
+function requirementsHTML(items,progress=false){if(!items.length)return `<span>条件なし</span>`;return items.map(item=>{const numbers=progress&&item.actual!=null?`${item.actual}/${item.required}`:`${item.required}`;return `<span class="${item.missing>0?"missing":""}">${tagHTML(item)} × ${numbers}${item.missing>0?`（あと${item.missing}）`:""}</span>`}).join(" ")}
+function cardBand(tags){if(!tags.length)return "#777";if(tags.length===1)return tags[0].color;const stop=100/tags.length;const parts=[];tags.forEach((tag,i)=>parts.push(`${tag.color} ${i*stop}%`,`${tag.color} ${(i+1)*stop}%`));return `linear-gradient(90deg,${parts.join(",")})`}
+function cardHTML(card,selectable=false){return `<article class="card" style="--tag-band:${cardBand(card.tags)}" ${selectable?`data-keep="${esc(card.id)}" tabindex="0" role="button"`:""}><div class="meta">${esc(card.role)}</div><h3>${esc(card.name)}</h3><p>${esc(card.text)}</p><div class="self-tags"><span class="label">このカード自身のタグ</span><div class="tag-row">${card.tags.map(t=>tagHTML(t)).join("")}</div></div><div class="required-tags condition"><span class="label">起動に必要な下層・支援タグ（自身は数えない）</span>${requirementsHTML(card.requirements)}</div><div class="effect-row">${card.options.map(o=>`<span class="effect">${esc(o)}</span>`).join("")||"<span class='effect'>起動効果なし</span>"}</div></article>`}
 
-const $ = (selector) => document.querySelector(selector);
-const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-
-async function api(path, data = null) {
-  const options = data ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)} : {};
-  const response = await fetch(path, options);
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "通信に失敗しました。");
-  return result;
-}
-
-function notice(message, error = false) {
-  const box = $("#notice");
-  box.textContent = message || "";
-  box.className = message ? (error ? "error" : "message") : "";
-}
-
-async function boot() {
-  const config = await api("/api/config");
-  const select = $("#environment");
-  for (const event of config.environments) {
-    const option = document.createElement("option");
-    option.value = event.id;
-    option.textContent = `${event.name}（${event.forecast.join(" → ")}ダメージ）`;
-    select.appendChild(option);
-  }
-}
-
-$("#start").addEventListener("click", async () => {
-  try {
-    const result = await api("/api/new", {
-      seed: Number($("#seed").value || 0),
-      environment_id: $("#environment").value || null,
-    });
-    gameId = result.game_id;
-    state = result.state;
-    $("#setup").classList.add("hidden");
-    $("#game").classList.remove("hidden");
-    $("#restart").classList.remove("hidden");
-    notice("ゲームを開始しました。まず今ラウンドのサイズを選んでください。");
-    render();
-  } catch (error) { notice(error.message, true); }
-});
-
-$("#restart").addEventListener("click", () => {
-  gameId = null; state = null; retained.clear();
-  $("#game").classList.add("hidden");
-  $("#setup").classList.remove("hidden");
-  $("#restart").classList.add("hidden");
-});
-
-async function act(kind, extra = {}) {
-  try {
-    const result = await api("/api/action", {game_id: gameId, kind, ...extra});
-    state = result.state;
-    retained.clear();
-    notice(messageFor(kind));
-    render();
-  } catch (error) { notice(error.message, true); }
-}
-
-function messageFor(kind) {
-  return ({size:"サイズを決めました。残すカードを選んでください。", retain:"カードを保持しました。配置と起動を行えます。", play:"列の先頭に配置しました。", support:"支援として下層に配置しました。", activate:"カードを起動しました。", resolve:"環境を解決しました。"})[kind] || "操作しました。";
-}
-
-function render() {
-  renderOverview();
-  renderDecision();
-  renderBoard();
-  renderExtremes();
-}
-
-function renderOverview() {
-  const e = state.environment;
-  const result = state.last_result && `<div class="result"><strong>直前の結果:</strong> R${state.last_result.round}　基礎ダメージ ${state.last_result.raw_damage} − シールド ${state.last_result.shield} = <strong>${state.last_result.damage}</strong> ／ 繁栄 +${state.last_result.prosperity}</div>`;
-  $("#overview").innerHTML = `
-    ${result || ""}<h2>${esc(e.name)} — ラウンド ${state.round}/5・Stage ${state.stage}</h2>
-    <p>${esc(e.text)}</p>
-    <div class="stats">
-      <div class="stat">繁栄<strong>${state.prosperity}</strong></div>
-      <div class="stat">累積ダメージ<strong>${state.damage} / ${state.damage_limit}</strong></div>
-      <div class="stat">現在サイズ<strong>${state.size_name}</strong></div>
-      <div class="stat">今Rの繁栄<strong>${state.round_prosperity}</strong></div>
-      <div class="stat">今Rのシールド<strong>${state.round_shield}</strong></div>
-      <div class="stat">手札<strong>${state.hand.length} / ${state.hand_limit}</strong></div>
-    </div>
-    <div class="forecast">${e.forecast.map(f => `<span class="${f.round === state.round ? "current" : ""}">R${f.round}・${f.stage}: ${f.damage}ダメージ</span>`).join("")}</div>`;
-}
-
-function renderDecision() {
-  const box = $("#decision");
-  if (state.finished) {
-    box.innerHTML = `<h2>${state.extinct ? "種は絶滅しました" : "5ラウンド終了"}</h2><p class="${state.extinct ? "warning" : ""}">最終繁栄: <strong>${state.prosperity}</strong>　累積ダメージ: <strong>${state.damage}</strong></p><button class="primary" onclick="document.querySelector('#restart').click()">もう一度遊ぶ</button>`;
-    return;
-  }
-  if (state.phase === "size") {
-    box.innerHTML = `<h2>1. サイズを選ぶ</h2><p class="phase-help">大きいほど起動した繁栄が増えますが、カードを残せる枚数が減ります。毎ラウンド1段階だけ変更できます。</p><div class="button-row">${state.legal_sizes.map(s => `<button onclick="act('size',{size:'${s.id}'})"><strong>${s.name}</strong><br>繁栄×${s.multiplier}・保持${s.retention}枚</button>`).join("")}</div>`;
-  } else if (state.phase === "retain") {
-    const cards = [...state.candidates, ...state.extremes.filter(x => x.eligible)];
-    box.innerHTML = `<h2>2. カードを保持する <span id="keep-count">0 / ${state.retention_limit}</span></h2><p class="phase-help">欲しいカードを選びます。切り札も同じ保持枠を使います。0枚でも進めます。</p><div class="cards">${cards.map(c => cardHTML(c, true)).join("")}</div><div class="button-row" style="margin-top:12px"><button class="primary" id="keep-button">選んだカードを保持して進む</button></div>`;
-    document.querySelectorAll("[data-keep]").forEach(el => el.addEventListener("click", () => toggleKeep(el.dataset.keep)));
-    $("#keep-button").addEventListener("click", () => act("retain", {card_ids: [...retained]}));
-  } else {
-    box.innerHTML = `<h2>3. 配置・支援・起動</h2><p class="phase-help">先頭カードだけが起動できます。先頭を起動してから別カードで覆い、新しい先頭も起動できます。準備が終わったら環境を解決してください。</p><h3>手札</h3>${state.hand.length ? `<div class="cards">${state.hand.map(c => handCardHTML(c)).join("")}</div>` : "<p>手札はありません。</p>"}<div class="button-row" style="margin-top:14px"><button class="primary danger" onclick="act('resolve')">このラウンドの環境を解決する</button></div>`;
-  }
-}
-
-function toggleKeep(id) {
-  if (retained.has(id)) retained.delete(id);
-  else if (retained.size < state.retention_limit) retained.add(id);
-  else { notice(`保持できるのは${state.retention_limit}枚までです。`, true); return; }
-  document.querySelectorAll("[data-keep]").forEach(el => el.classList.toggle("selected", retained.has(el.dataset.keep)));
-  $("#keep-count").textContent = `${retained.size} / ${state.retention_limit}`;
-}
-
-function cardHTML(card, selectable = false) {
-  return `<article class="card" ${selectable ? `data-keep="${esc(card.id)}"` : ""}>
-    <div class="meta">${esc(card.role)}</div>
-    <h3>${esc(card.name)}</h3><p>${esc(card.text)}</p>
-    <div class="tags">${card.tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
-    <div class="condition">起動条件: ${esc(card.requirements)}</div>
-    <div class="effects">${card.options.map(o => `<span class="effect">${esc(o)}</span>`).join("") || "<span class='effect'>起動効果なし</span>"}</div>
-  </article>`;
-}
-
-function handCardHTML(card) {
-  const actions = state.columns.map(col => `<button onclick="act('play',{card_id:'${card.id}',column:${col.index}})">先頭→列${col.index + 1}</button><button onclick="act('support',{card_id:'${card.id}',column:${col.index}})">支援→列${col.index + 1}</button>`).join("");
-  return `<article class="card"><div class="meta">${esc(card.role)}</div><h3>${esc(card.name)}</h3><p>${esc(card.text)}</p><div class="tags">${card.tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div><div class="condition">起動条件: ${esc(card.requirements)}</div><div class="effects">${card.options.map(o => `<span class="effect">${esc(o)}</span>`).join("")}</div><div class="hand-actions">${actions}</div></article>`;
-}
-
-function renderBoard() {
-  const box = $("#board");
-  box.innerHTML = `<h2>進化列</h2><div class="columns">${state.columns.map(columnHTML).join("")}</div>`;
-}
-
-function columnHTML(col) {
-  const cards = col.cards.map(c => `<div class="stack-card ${c.top ? "top" : ""} ${c.support ? "support" : ""}"><strong>${esc(c.name)}</strong><br><small>${c.top ? "先頭" : c.support ? "支援（タグのみ）" : "下層（タグのみ）"}${c.activated ? "・起動済み" : ""}</small></div>`).join("");
-  const acts = col.activations.map(a => `<button ${a.enabled ? "" : "disabled"} title="${esc(a.reason)}" onclick="act('activate',{column:${col.index},option:${a.option}})">起動: ${esc(a.text)}</button>`).join("");
-  return `<article class="column"><h3>${col.name} <small>${col.cards.length}/${col.capacity}</small></h3><div class="tags">${col.tags.map(t => `<span class="tag">${esc(t.name)} ${t.count}</span>`).join("")}</div><div class="stack">${cards || "<span>空</span>"}</div>${col.next_pushed ? `<p class="warning">次に押し出す: ${esc(col.next_pushed)}</p>` : ""}<div class="button-row">${acts}</div></article>`;
-}
-
-function renderExtremes() {
-  $("#extreme-list").innerHTML = state.extremes.length ? `<div class="cards">${state.extremes.map(c => `<div>${cardHTML(c)}<p class="${c.eligible ? "" : "warning"}">${c.eligible ? "現在取得可能" : "条件未達"}</p></div>`).join("")}</div>` : "<p>取得可能な切り札はありません。</p>";
-}
-
-boot().catch(error => notice(error.message, true));
+$("#start").addEventListener("click",async()=>{try{const result=await api("/api/new",{seed:Number($("#seed").value||0)});gameId=result.game_id;state=result.state;$("#setup").classList.add("hidden");$("#game").classList.remove("hidden");$("#restart").classList.remove("hidden");notice("ゲームを開始しました。まずサイズを選んでください。");render()}catch(error){notice(error.message,true)}});
+$("#restart").addEventListener("click",()=>{gameId=null;state=null;retained.clear();$("#game").classList.add("hidden");$("#setup").classList.remove("hidden");$("#restart").classList.add("hidden")});
+async function act(kind,extra={}){try{const result=await api("/api/action",{game_id:gameId,kind,...extra});state=result.state;retained.clear();notice(({size:"サイズを決めました。保持するカードを選んでください。",retain:"カードを保持しました。配置・支援・起動を行えます。",play:"列の先頭に配置しました。",support:"先頭の下へ支援として配置しました。",activate:"カードを起動しました。",resolve:"ラウンドを精算しました。"})[kind]||"操作しました。");render()}catch(error){notice(error.message,true)}}
+function render(){renderForecast();renderOverview();renderDecision();renderBoard()}
+function renderForecast(){$("#forecast").innerHTML=`<h2>公開された5ラウンドの災害予報</h2><div class="forecast-grid">${state.forecast.map(f=>`<article class="forecast-card ${f.current?"current":""} ${f.completed?"completed":""}"><div class="meta">ラウンド ${f.round}${f.current?"・現在":""}</div><h3>${esc(f.name)}</h3><div>${f.hazard_tags.map(h=>`<span class="hazard">${esc(h.name)}</span>`).join(" ")}</div><div class="optimization"><strong>最適化：${esc(f.optimization.name)}</strong><br>${requirementsHTML(f.optimization.requirements)}</div></article>`).join("")}</div>`}
+function resultHTML(result){if(!result)return "";const hazards=result.hazards.map(h=>`<div>${esc(h.name)}：出目 ${h.roll} − 防御 ${h.defense} ＝ 未防御 ${h.unblocked} → ${h.unblocked===0?"完全防御・減点0":`2<sup>${h.unblocked}</sup> = −${h.penalty}点`}</div>`).join("");return `<div class="result"><strong>ラウンド${result.round}「${esc(result.disaster_name)}」の精算</strong><div class="result-steps"><div>開始 ${result.score_before}点 ＋ 起動値 ${result.prosperity_base} × サイズ倍率 ${result.size_multiplier} ＝ ${result.score_after_prosperity}点</div>${hazards}<div>災害後：${result.score_after_hazard}点（最低0点）</div><div class="${result.optimization_met?"success":"warning"}">最適化「${esc(result.optimization_name)}」：${result.optimization_met?"達成・半減なし":`未達・${result.optimization_half_loss}点を失い半減`}</div><div><strong>精算後 ${result.total_prosperity}点</strong></div></div></div>`}
+function renderOverview(){const d=state.disaster;$("#overview").innerHTML=`${resultHTML(state.last_result)}<h2>ラウンド ${state.round}/5：${esc(d.name)}</h2><p>${esc(d.text)}</p><div class="stats"><div class="stat">繁栄点<strong>${state.prosperity}</strong></div><div class="stat">現在サイズ<strong>${state.size_name}</strong></div><div class="stat">起動した繁栄値<strong>${state.round_prosperity_base}</strong></div><div class="stat">手札<strong>${state.hand.length}/${state.hand_limit}</strong></div></div><h3>今回の1d6と防御</h3><div class="hazard-row">${d.hazards.map(h=>`<span class="hazard">${esc(h.name)}：出目 ${h.roll}／防御 ${h.shield}</span>`).join("")}</div><div class="optimization"><strong>今回の最適化：${esc(d.optimization.name)}</strong><br>${requirementsHTML(d.optimization.requirements,true)}<br><span class="${d.optimization.met?"success":"warning"}">${d.optimization.met?"現在達成済み":"現在未達（精算時に繁栄点半減）"}</span></div>`}
+function renderDecision(){const box=$("#decision");if(state.finished){box.innerHTML=`<h2>5ラウンド終了</h2><p>最終繁栄点 <strong>${state.prosperity}</strong></p><button class="primary" onclick="document.querySelector('#restart').click()">もう一度遊ぶ</button>`;return}if(state.phase==="size"){box.innerHTML=`<h2>1. サイズを選ぶ</h2><p class="phase-help">大きいほど起動効果の繁栄点が増えますが、公開6枚から保持できる枚数が減ります。</p><div class="button-row">${state.legal_sizes.map(s=>`<button onclick="act('size',{size:'${s.id}'})"><strong>${s.name}</strong><br>繁栄×${s.multiplier}・保持${s.retention}枚</button>`).join("")}</div>`}else if(state.phase==="retain"){box.innerHTML=`<h2>2. 公開カードを保持する <span id="keep-count">0/${state.retention_limit}</span></h2><p class="phase-help">欲しいカードを選択してください。0枚でも進めます。</p><div class="cards">${state.candidates.map(c=>cardHTML(c,true)).join("")}</div><div class="button-row" style="margin-top:12px"><button class="primary" id="keep-button">選んだカードを保持して進む</button></div>`;document.querySelectorAll("[data-keep]").forEach(el=>{el.addEventListener("click",()=>toggleKeep(el.dataset.keep));el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleKeep(el.dataset.keep)}})});$("#keep-button").addEventListener("click",()=>act("retain",{card_ids:[...retained]}))}else{box.innerHTML=`<h2>3. 配置・支援・起動</h2><p class="phase-help">起動できるのは各列の先頭だけです。新しいカードを置けば、その新しい先頭も起動できます。</p><h3>手札</h3>${state.hand.length?`<div class="cards">${state.hand.map(handCardHTML).join("")}</div>`:"<p>手札はありません。</p>"}<div class="button-row" style="margin-top:14px"><button class="primary danger" onclick="act('resolve')">このラウンドを精算する</button></div>`}}
+function toggleKeep(id){if(retained.has(id))retained.delete(id);else if(retained.size<state.retention_limit)retained.add(id);else{notice(`保持できるのは${state.retention_limit}枚までです。`,true);return}document.querySelectorAll("[data-keep]").forEach(el=>el.classList.toggle("selected",retained.has(el.dataset.keep)));$("#keep-count").textContent=`${retained.size}/${state.retention_limit}`}
+function handCardHTML(card){const actions=state.columns.map(col=>`<button onclick="act('play',{card_id:'${card.id}',column:${col.index}})">先頭→列${col.index+1}</button><button onclick="act('support',{card_id:'${card.id}',column:${col.index}})">支援→列${col.index+1}</button>`).join("");return cardHTML(card).replace("</article>",`<div class="hand-actions">${actions}</div></article>`)}
+function renderBoard(){$("#board").innerHTML=`<h2>進化列</h2><p class="phase-help">「起動用タグ」は先頭カード自身を除外した合計です。最適化には先頭を含む全カードが数えられます。</p><div class="columns">${state.columns.map(columnHTML).join("")}</div>`}
+function columnHTML(col){const cards=col.cards.map(c=>`<div class="stack-card ${c.top?"top":""} ${c.support?"support":""}"><strong>${esc(c.name)}</strong><br><small>${c.top?"先頭":c.support?"支援（タグのみ）":"下層（タグのみ）"}${c.activated?"・起動済み":""}</small><div class="tag-row">${c.tags.map(t=>tagHTML(t)).join("")}</div></div>`).join("");const acts=col.activations.map(a=>`<div><button ${a.enabled?"":"disabled"} title="${esc(a.reason)}" onclick="act('activate',{column:${col.index},option:${a.option}})">起動：${esc(a.text)}</button>${a.requirements.length?`<div class="condition">必要：${requirementsHTML(a.requirements,true)}</div>`:""}</div>`).join("");return `<article class="column"><h3>${esc(col.name)} <small>${col.cards.length}/${col.capacity}</small></h3><span class="label">列の全タグ（最適化用）</span><div class="tag-row">${col.tags.map(t=>tagHTML(t)).join("")}</div><span class="label">先頭を除くタグ（起動用）</span><div class="tag-row">${col.activation_tags.map(t=>tagHTML(t)).join("")||"なし"}</div><div class="stack">${cards||"空"}</div>${col.next_pushed?`<p class="warning">次に押し出される：${esc(col.next_pushed)}</p>`:""}<div class="button-row">${acts}</div></article>`}

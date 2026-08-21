@@ -10,18 +10,43 @@ TAG_NAMES = {
     "Caste": "カースト", "Nesting": "巣作り", "Movement": "移動",
     "Resource Ecology": "資源生態",
 }
+TAG_COLORS = {
+    "Morphology": "#0072B2", "Chemistry": "#E69F00", "Cooperation": "#009E73",
+    "Caste": "#D55E00", "Nesting": "#CC79A7", "Movement": "#56B4E9",
+    "Resource Ecology": "#F0E442",
+}
+TAG_SYMBOLS = {
+    "Morphology": "mandibles", "Chemistry": "droplet", "Cooperation": "linked-ants",
+    "Caste": "castes", "Nesting": "nest", "Movement": "route",
+    "Resource Ecology": "leaf-seed",
+}
 HAZARD_NAMES = {
     "flood": "洪水", "heat": "暑熱", "drought": "乾燥",
     "fungal": "菌害", "raid": "襲撃",
 }
 SIZE_NAMES = {"SMALL": "小型", "MEDIUM": "中型", "LARGE": "大型", "GIANT": "超大型"}
-ROLE_NAMES = {"Foundation": "基盤", "Payoff": "完成形", "Bridge": "橋渡し", "Extreme": "切り札"}
+ROLE_NAMES = {"Foundation": "基盤", "Payoff": "完成形", "Bridge": "橋渡し"}
 
 EVENT_NAMES = {
-    "flood_front": ("洪水前線", "増水が、筏と樹冠への退避経路を試す。"),
-    "desert_heat_wave": ("砂漠熱波", "熱と乾燥した地表が、巣外活動を危険にする。"),
-    "garden_blight": ("菌園病害", "菌園に特化した寄生菌が、栽培食料を脅かす。"),
-    "army_ant_raid": ("軍隊アリ襲撃", "統率された侵入群が、巣口防衛と救護能力を試す。"),
+    "flood_torrent": ("洪水・濁流", "泥を含んだ濁流が地上の経路を押し流す。"),
+    "canopy_fragmentation": ("洪水・樹冠分断", "増水が樹冠の避難場所を切り離す。"),
+    "desert_heat_wave": ("砂漠熱波", "強い日射と乾いた地表が巣外活動を危険にする。"),
+    "prolonged_drought": ("長期干ばつ", "長い乾季が地表の食料を失わせる。"),
+    "garden_epidemic": ("菌園疫病", "菌園に特化した病原体が栽培食料へ広がる。"),
+    "spore_contamination": ("胞子汚染", "空中の胞子が働きアリと菌園を汚染する。"),
+    "army_ant_raid": ("軍隊アリ侵攻", "統率された侵入群が巣へ押し寄せる。"),
+    "post_raid_injuries": ("襲撃後の負傷", "戦闘後に散らばった負傷者が群れを圧迫する。"),
+}
+
+OPTIMIZATION_NAMES = {
+    "flood_torrent": "生体いかだ",
+    "canopy_fragmentation": "樹冠退避",
+    "desert_heat_wave": "銀毛放熱",
+    "prolonged_drought": "地下穀倉",
+    "garden_epidemic": "共生菌園",
+    "spore_contamination": "口腔隔離",
+    "army_ant_raid": "生体城門",
+    "post_raid_injuries": "救助隊列",
 }
 
 CARD_NAMES = {
@@ -58,19 +83,11 @@ CARD_NAMES = {
     "cataglyphis_heatshock_proteins": "砂漠アリの熱ショック応答",
     "megaponera_termite_raid": "マタベレアリのシロアリ襲撃",
     "temnothorax_emergency_emigration": "ムネボソアリの緊急引越し",
-    "solenopsis_ark": "ヒアリの生きた方舟",
-    "canopy_escape": "カメアリの樹冠退避",
-    "silver_thermal_coat": "サハラギンアリの銀色断熱毛",
-    "deep_granary": "収穫アリの深層穀倉",
-    "microbial_garden_partner": "菌園を守る微生物共生",
-    "selective_antibiotic_pocket": "選別抗菌ポケット",
-    "head_barricade": "カメアリの頭部バリケード",
-    "rescue_scouts": "マタベレアリの救助斥候",
 }
 
 CARD_TEXTS = {
     "trail_pheromone": "化学の道標で、新しい採餌経路を今すぐ見つける。",
-    "earthwork_nest": "維持された土中空間へ、次に使える選択肢を蓄える。",
+    "earthwork_nest": "維持された土中空間を探り、別の選択肢を今すぐ見つける。",
     "collective_foraging": "仲間を食料へ動員し、繁栄へつなげる。",
     "oecophylla_silkworks": "幼虫の絹と協同作業で、生きた葉の巣を織る。",
     "oecophylla_living_chain": "多数の体を一時的な橋へ変える。",
@@ -79,7 +96,7 @@ CARD_TEXTS = {
     "odontomachus_tension_lock": "ばね仕掛けの顎を、攻撃にも緊急脱出にも使う。",
     "pheidole_supermajor_program": "大きな投資で、目立つ超大型防衛個体を生み出す。",
     "pheidole_seed_miller": "大型兵の顎を、硬い種子の加工へ転用する。",
-    "myrmecocystus_reserve": "液体食料を蓄える個体が、未来の選択肢を保存する。",
+    "myrmecocystus_reserve": "液体食料を蓄える個体で乾燥をしのぎ、別の選択肢を今すぐ得る。",
     "megaponera_field_medicine": "抗菌分泌物で負傷個体を治療し、狩りの損失を抑える。",
     "megaponera_rescue_column": "負傷した仲間を巣へ運び、働き手を将来へ残す。",
     "colobopsis_last_defense": "粘着性の分泌物を放つ自己犠牲で侵入者を止める。",
@@ -89,27 +106,19 @@ CARD_TEXTS = {
     "atta_fungus_garden": "葉を菌類の作物へ変え、安定した食料を得る。",
     "attine_infrabuccal_pocket": "感染物を隔離・除去する口器構造で菌園を衛生化する。",
     "cataglyphis_silver_hair": "三角形の銀毛が日射を反射し、体温上昇を抑える。",
-    "cataglyphis_sky_compass": "偏光と経路積算で、目印のない砂漠から帰還する。",
+    "cataglyphis_sky_compass": "偏光と経路積算で帰還し、別の経路を今すぐ見つける。",
     "pheidole_raid_wall": "大型兵とワーカーを巣口へ集め、侵入隊を段階的に阻む。",
     "harpegnathos_gamergate": "ワーカーが繁殖個体へ移行できる柔軟なカーストを持つ。",
     "temnothorax_quorum_nest": "偵察個体の情報を集め、中央指揮なしで新居を決める。",
-    "pogonomyrmex_granary": "地下室の種子備蓄が、欠乏前の準備を報いる。",
+    "pogonomyrmex_granary": "湿った地下の種子庫で乾燥をしのぎ、別の選択肢を今すぐ得る。",
     "paltothyreus_distress_signal": "閉じ込められた個体の化学信号が仲間の救助を呼ぶ。",
-    "solenopsis_dry_store": "食料を乾燥保存し、今の収穫を未来の余裕へ変える。",
+    "solenopsis_dry_store": "食料を乾燥保存し、繁栄と新しい選択肢を同時に得る。",
     "solenopsis_raft_cycling": "筏の位置を交代しながら、長い洪水を耐え抜く。",
-    "atta_leaf_cache": "混雑時に葉片を仮置きし、採餌の流れを止めない。",
+    "atta_leaf_cache": "葉片を仮置きして流れを組み替え、別の選択肢を今すぐ得る。",
     "acromyrmex_spore_removal": "胞子と汚染部を物理的に取り除き、化学防御を補う。",
     "cataglyphis_heatshock_proteins": "分子シャペロンが、高温下の細胞機能を守る。",
     "megaponera_termite_raid": "危険な集団狩りで、大きな食料収入を狙う。",
     "temnothorax_emergency_emigration": "傷んだ巣を捨て、危険が迫る前に移住する。",
-    "solenopsis_ark": "働きアリが体を連結し、幼虫ごと水面を渡る。",
-    "canopy_escape": "水に耐える代わりに、樹上経路へ逃れる。",
-    "silver_thermal_coat": "特殊な銀毛が、熱波の頂点を直接しのぐ。",
-    "deep_granary": "深い地下備蓄が、乾燥した地表から資源を守る。",
-    "microbial_garden_partner": "共生細菌の抗菌作用で、菌園病害を抑え込む。",
-    "selective_antibiotic_pocket": "病原体を隔離して殺菌し、広がる前に処理する。",
-    "head_barricade": "盾形の頭を巣口にはめ込み、侵入者を遮断する。",
-    "rescue_scouts": "危険へ出ながら負傷者を回収し、働き手を守る。",
 }
 
 
@@ -119,6 +128,10 @@ def card_name(card_id: str, fallback: str = "") -> str:
 
 def event_name(event_id: str, fallback: str = "") -> str:
     return EVENT_NAMES.get(event_id, (fallback or event_id, ""))[0]
+
+
+def optimization_name(disaster_id: str, fallback: str = "") -> str:
+    return OPTIMIZATION_NAMES.get(disaster_id, fallback or disaster_id)
 
 
 def tags_text(tags) -> list[str]:
@@ -132,8 +145,8 @@ def requirement_text(requirements) -> str:
 
 
 def shield_text(shield: ShieldSpec) -> str:
-    hazards = "・".join(HAZARD_NAMES.get(tag, tag) for tag in sorted(shield.hazard_tags))
-    return f"{hazards}シールド +{shield.amount}"
+    hazard = HAZARD_NAMES.get(shield.hazard_tag, shield.hazard_tag)
+    return f"{hazard}シールド +{shield.amount}"
 
 
 def option_text(option: ActionOption) -> str:
@@ -143,6 +156,4 @@ def option_text(option: ActionOption) -> str:
     parts.extend(shield_text(shield) for shield in option.shields)
     if option.draw_cards:
         parts.append(f"カードを今すぐ{option.draw_cards}枚引く")
-    if option.retain_bonus:
-        parts.append(f"次ラウンドの保持上限 +{option.retain_bonus}")
     return "／".join(parts) or "数値効果なし"

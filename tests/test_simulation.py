@@ -7,11 +7,11 @@ from ant_game.simulation import history_as_dict, history_as_text, main, play_gam
 from ant_game.strategies import make_strategy, strategy_names
 
 
-def test_all_required_strategies_finish_or_go_extinct() -> None:
+def test_all_required_strategies_finish_five_rounds() -> None:
     for name in strategy_names():
         state = play_game(name, 17)
         assert state.finished
-        assert 1 <= len(state.history) <= 5
+        assert len(state.history) == 5
 
 
 def test_bots_use_the_new_unconditional_starter_actions() -> None:
@@ -37,7 +37,7 @@ def test_simulation_is_deterministic_and_win_rates_sum_to_one() -> None:
     assert sum(row["win_rate"] for row in first["strategies"].values()) == pytest.approx(1)
 
 
-def test_size_extreme_policies_reach_their_targets_when_alive() -> None:
+def test_size_extreme_policies_reach_their_targets() -> None:
     giant = play_game("always_giant", 2)
     small = play_game("always_small", 2)
     assert [row.size for row in giant.history[:3]] == [Size.MEDIUM, Size.LARGE, Size.GIANT]

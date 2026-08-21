@@ -7,26 +7,30 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <svg class="symbol-sprite" aria-hidden="true">
+    <symbol id="symbol-mandibles" viewBox="0 0 24 24"><circle cx="12" cy="11" r="5"/><path d="M8 13C3 12 3 7 5 5M16 13c5-1 5-6 3-8"/></symbol>
+    <symbol id="symbol-droplet" viewBox="0 0 24 24"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z"/><circle cx="10" cy="15" r="1"/></symbol>
+    <symbol id="symbol-linked-ants" viewBox="0 0 24 24"><circle cx="5" cy="12" r="3"/><circle cx="12" cy="7" r="3"/><circle cx="19" cy="12" r="3"/><path d="m7 10 3-2m4 0 3 2M8 13h8"/></symbol>
+    <symbol id="symbol-castes" viewBox="0 0 24 24"><circle cx="8" cy="14" r="3"/><circle cx="16" cy="10" r="5"/><path d="M5 18h6m0-1h10"/></symbol>
+    <symbol id="symbol-nest" viewBox="0 0 24 24"><path d="M3 19h18M5 19c0-7 3-12 7-12s7 5 7 12M9 19v-4a3 3 0 0 1 6 0v4"/><circle cx="12" cy="4" r="1"/></symbol>
+    <symbol id="symbol-route" viewBox="0 0 24 24"><path d="M3 18c5 0 3-10 9-10h7m-3-3 3 3-3 3"/><circle cx="4" cy="18" r="2"/></symbol>
+    <symbol id="symbol-leaf-seed" viewBox="0 0 24 24"><path d="M4 17C4 8 11 4 20 4c0 9-4 16-13 16M7 18 17 8"/><circle cx="18" cy="18" r="3"/></symbol>
+    <symbol id="symbol-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></symbol>
+  </svg>
   <main>
-    <header>
-      <div><span class="eyebrow">5ラウンド試作版</span><h1>アリ進化ゲーム</h1></div>
-      <button id="restart" class="quiet hidden">新しいゲーム</button>
-    </header>
-
+    <header><div><span class="eyebrow">5ラウンド試作版</span><h1>アリ進化ゲーム</h1></div><button id="restart" class="quiet hidden">新しいゲーム</button></header>
     <section id="setup" class="panel setup">
       <h2>ゲームを始める</h2>
-      <p>災害の5ラウンド予報を見ながら、アリの進化列を組み立てます。</p>
+      <p>5つの災害は開始時にすべて公開されます。繁栄と備えの両方を考えて進化させてください。</p>
       <label>再現用seed <input id="seed" type="number" value="42"></label>
-      <label>環境災害 <select id="environment"><option value="">seedから決定</option></select></label>
-      <button id="start" class="primary">開始</button>
+      <button id="start" class="primary">予報を作って開始</button>
     </section>
-
     <div id="game" class="hidden">
+      <section id="forecast" class="panel" aria-label="5ラウンド災害予報"></section>
       <section id="overview" class="panel"></section>
       <div id="notice" role="status" aria-live="polite"></div>
       <section id="decision" class="panel"></section>
       <section id="board" class="panel"></section>
-      <details id="adaptations" class="panel"><summary>この環境の切り札カード</summary><div id="extreme-list"></div></details>
     </div>
   </main>
   <script src="/app.js"></script>

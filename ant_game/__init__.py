@@ -1,4 +1,4 @@
-"""Headless v0.3 Daybreak-style ant evolution prototype."""
+"""Headless five-round ant adaptation prototype."""
 
 from .engine import GameEngine, InvalidDecision
 from .models import (
@@ -7,10 +7,9 @@ from .models import (
     CardInstance,
     CardRole,
     ColumnState,
-    EventCard,
-    EventKind,
-    ExtremeAdaptation,
+    DisasterCard,
     GameState,
+    OptimizationRequirement,
     PlayedCard,
     RoundContext,
     RoundDecision,
@@ -27,12 +26,11 @@ __all__ = [
     "CardInstance",
     "CardRole",
     "ColumnState",
-    "EventCard",
-    "EventKind",
-    "ExtremeAdaptation",
+    "DisasterCard",
     "GameEngine",
     "GameState",
     "InvalidDecision",
+    "OptimizationRequirement",
     "PlayedCard",
     "RoundContext",
     "RoundDecision",

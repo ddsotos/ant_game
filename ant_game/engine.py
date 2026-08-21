@@ -1,4 +1,4 @@
-"""Deterministic, UI-independent v0.3 Daybreak-style rules engine."""
+"""Deterministic, UI-independent rules engine."""
 
 from __future__ import annotations
 
@@ -14,15 +14,13 @@ from .models import (
     CardInstance,
     CardRole,
     ColumnState,
-    EventCard,
-    ExtremeAdaptation,
+    DisasterCard,
     GameState,
     PlayedCard,
     RoundContext,
     RoundDecision,
     RoundPhase,
     RoundRecord,
-    ShieldSpec,
     Size,
     TraitCard,
 )
@@ -33,12 +31,12 @@ class InvalidDecision(ValueError):
 
 
 class GameEngine:
-    STAGES = (1, 1, 2, 3, 4)
+    """Five-round game using five public, non-repeating disasters."""
 
     def __init__(
         self,
         traits: Iterable[TraitCard],
-        events: Iterable[EventCard],
+        disasters: Iterable[DisasterCard],
         seed: int = 0,
         *,
         columns: int = 3,
@@ -46,16 +44,14 @@ class GameEngine:
         retention_curve: str | dict[Size, int] = "aggressive",
         hand_limit: int = 8,
         rounds: int = 5,
-        extinction_threshold: int = 6,
         starter_ids: Sequence[str] | None = None,
-        extremes: Iterable[ExtremeAdaptation] = (),
     ) -> None:
         if columns not in (3, 4):
             raise ValueError("columns must be 3 or 4")
         if rounds != 5:
-            raise ValueError("the v0.3 prototype is fixed at five rounds")
-        if hand_limit < 0 or extinction_threshold <= 0:
-            raise ValueError("hand_limit must be non-negative and threshold positive")
+            raise ValueError("the prototype is fixed at five rounds")
+        if hand_limit < 0:
+            raise ValueError("hand_limit must be non-negative")
         self.seed = seed
         self.rounds = rounds
         self.column_count = columns
@@ -63,32 +59,17 @@ class GameEngine:
         if self.column_capacity < 1:
             raise ValueError("column_capacity must be positive")
         self.hand_limit = hand_limit
-        self.extinction_threshold = extinction_threshold
 
         cards = list(traits)
-        events_list = list(events)
+        disaster_list = list(disasters)
         self.traits = {card.id: card for card in cards}
-        self.events = {event.id: event for event in events_list}
-        if not self.traits or not self.events:
-            raise ValueError("at least one trait and event are required")
-        if len(self.traits) != len(cards) or len(self.events) != len(events_list):
-            raise ValueError("card ids and event ids must be unique")
-
-        embedded: list[ExtremeAdaptation] = list(extremes)
-        for event in events_list:
-            for item in event.extreme_adaptations:
-                if isinstance(item, ExtremeAdaptation):
-                    embedded.append(item)
-        self.extremes = {item.id: item for item in embedded}
-        if len(self.extremes) != len(embedded):
-            raise ValueError("extreme adaptation ids must be unique")
-        for item in self.extremes.values():
-            self.traits.setdefault(item.id, item.as_trait())
-        for event in events_list:
-            for attached in event.extreme_adaptations:
-                attached_id = attached.id if isinstance(attached, ExtremeAdaptation) else attached
-                if attached_id not in self.extremes:
-                    raise ValueError(f"environment references unknown extreme adaptation: {attached_id}")
+        self.disasters = {card.id: card for card in disaster_list}
+        if not self.traits:
+            raise ValueError("at least one trait is required")
+        if len(disaster_list) < self.rounds:
+            raise ValueError("at least five disasters are required")
+        if len(self.traits) != len(cards) or len(self.disasters) != len(disaster_list):
+            raise ValueError("trait and disaster ids must be unique")
 
         if retention_curve == "aggressive":
             self.retention_curve = {size: size.retention for size in Size}
@@ -108,34 +89,24 @@ class GameEngine:
         if any(card_id not in self.traits for card_id in self.starter_ids):
             raise ValueError("starter ids must refer to trait cards")
 
-        self.normal_ids = tuple(
-            card.id for card in cards
-            if card.id not in self.starter_ids and card.id not in self.extremes
-        )
+        self.normal_ids = tuple(card.id for card in cards if card.id not in self.starter_ids)
         if len(self.normal_ids) < 6:
             raise ValueError("at least six normal non-starter cards are required")
 
     # ------------------------------------------------------------------ setup
-    def new_game(self, *, environment_id: str | None = None) -> GameState:
+    def new_game(self) -> GameState:
         rng = random.Random(self.seed)
-        event_ids = list(self.events)
-        rng.shuffle(event_ids)
-        chosen = environment_id or event_ids[0]
-        if chosen not in self.events:
-            raise InvalidDecision(f"unknown environment: {chosen}")
-
+        disaster_ids = tuple(rng.sample(tuple(self.disasters), self.rounds))
         deck = [CardInstance(card_id, card_id) for card_id in self.normal_ids]
         rng.shuffle(deck)
         columns = [ColumnState() for _ in range(self.column_count)]
         for index, card_id in enumerate(self.starter_ids):
-            columns[index].cards.append(
-                PlayedCard(instance_id=card_id, card_id=card_id)
-            )
+            columns[index].cards.append(PlayedCard(instance_id=card_id, card_id=card_id))
         return GameState(
             seed=self.seed,
             size=Size.SMALL,
             columns=columns,
-            environment_id=chosen,
+            disaster_ids=disaster_ids,
             trait_deck=deck,
             rng_state=rng.getstate(),
         )
@@ -147,37 +118,40 @@ class GameEngine:
         value = int(state.size)
         return tuple(Size(index) for index in range(max(0, value - 1), min(3, value + 1) + 1))
 
-    def current_event(self, state: GameState) -> EventCard:
+    def current_disaster(self, state: GameState) -> DisasterCard:
+        if state.current_round is not None:
+            disaster_id = state.current_round.disaster_id
+        elif state.disaster_ids:
+            disaster_id = state.disaster_ids[min(state.round_number, self.rounds - 1)]
+        else:
+            raise InvalidDecision("state has no disaster forecast")
         try:
-            return self.events[state.environment_id]
+            return self.disasters[disaster_id]
         except KeyError as exc:
-            raise InvalidDecision("state has no valid environment") from exc
-
-    def current_stage(self, state: GameState) -> int:
-        if state.round_number >= self.rounds:
-            return self.STAGES[-1]
-        return self.STAGES[state.round_number]
+            raise InvalidDecision("state has no valid current disaster") from exc
 
     def retention_limit(self, state: GameState) -> int:
-        bonus = state.current_round.retention_bonus if state.current_round is not None else 0
-        return self.retention_curve[state.size] + bonus
+        return self.retention_curve[state.size]
 
     # ------------------------------------------------------------- round flow
-    def start_round(self, state: GameState) -> EventCard:
+    def start_round(self, state: GameState) -> DisasterCard:
         self._require_phase(state, RoundPhase.IDLE)
         if state.round_number >= self.rounds:
             state.phase = RoundPhase.COMPLETE
             raise InvalidDecision("the game is already finished")
+        disaster = self.disasters[state.disaster_ids[state.round_number]]
+        rng = random.Random()
+        rng.setstate(state.rng_state)
+        rolls = {hazard: rng.randint(1, 6) for hazard in sorted(disaster.hazard_tags)}
+        state.rng_state = rng.getstate()
         state.current_round = RoundContext(
             round_number=state.round_number + 1,
-            stage=self.STAGES[state.round_number],
-            environment_id=state.environment_id,
+            disaster_id=disaster.id,
+            hazard_rolls=rolls,
             size_before=state.size,
-            retention_bonus=state.next_retention_bonus,
         )
-        state.next_retention_bonus = 0
         state.phase = RoundPhase.SIZE
-        return self.current_event(state)
+        return disaster
 
     def choose_size(self, state: GameState, size: Size) -> tuple[str, ...]:
         self._require_phase(state, RoundPhase.SIZE)
@@ -203,25 +177,18 @@ class GameEngine:
         if len(set(requested)) != len(requested):
             raise InvalidDecision("a card may only be retained once")
         candidates = set(state.current_round.candidate_ids)
-        valid_extremes = {item.id for item in self.eligible_extremes(state)}
-        if any(card_id not in candidates and card_id not in valid_extremes for card_id in requested):
-            raise InvalidDecision("retained cards must be current candidates or eligible extremes")
+        if any(card_id not in candidates for card_id in requested):
+            raise InvalidDecision("retained cards must be current candidates")
         limit = min(self.retention_limit(state), self.hand_limit - len(state.hand))
         if len(requested) > limit:
             raise InvalidDecision("retained cards exceed the size or hand limit")
 
         candidate_instances = {item.instance_id: item for item in self._current_candidate_instances(state)}
-        retained_instances: list[CardInstance] = []
-        for instance_id in requested:
-            if instance_id in candidate_instances:
-                retained_instances.append(candidate_instances[instance_id])
-            else:
-                retained_instances.append(CardInstance(instance_id, instance_id, state.environment_id))
-                state.claimed_extreme_ids.add(instance_id)
-        state.hand.extend(retained_instances)
+        state.hand.extend(candidate_instances[instance_id] for instance_id in requested)
         kept = set(requested)
-        remaining = [item for item in self._current_candidate_instances(state) if item.instance_id not in kept]
-        state.trait_discard.extend(remaining)
+        state.trait_discard.extend(
+            item for item in self._current_candidate_instances(state) if item.instance_id not in kept
+        )
         state.current_round.retained_ids = requested
         state.phase = RoundPhase.ACTIONS
         return requested
@@ -238,21 +205,16 @@ class GameEngine:
         instance = self._take_hand_instance(state, instance.instance_id)
         column = state.columns[column_index]
         pushed: list[str] = []
-        column.cards.append(
-            PlayedCard(
-                instance_id=instance.instance_id,
-                card_id=instance.card_id,
-                origin_event_id=instance.origin_event_id,
-            )
-        )
+        column.cards.append(PlayedCard(instance_id=instance.instance_id, card_id=instance.card_id))
         if len(column.cards) > self.column_capacity:
             pushed_card = column.cards.pop(0)
             pushed.append(pushed_card.instance_id)
-            state.trait_discard.append(
-                CardInstance(pushed_card.instance_id, pushed_card.card_id, pushed_card.origin_event_id)
-            )
+            state.trait_discard.append(CardInstance(pushed_card.instance_id, pushed_card.card_id))
         self._on_play(card, state)
-        self._log_action(state, {"kind": "play", "card_id": card_id, "column": column_index, "pushed_out": tuple(pushed)})
+        self._log_action(
+            state,
+            {"kind": "play", "card_id": card_id, "column": column_index, "pushed_out": tuple(pushed)},
+        )
         return tuple(pushed)
 
     def insert_support(self, state: GameState, card_id: str, column_index: int) -> None:
@@ -268,24 +230,23 @@ class GameEngine:
         if card.role is CardRole.STARTER:
             raise InvalidDecision("starter cards cannot be inserted as support")
         instance = self._take_hand_instance(state, instance.instance_id)
-        # Cards are oldest -> newest.  Insert immediately below the top.
         column.cards.insert(
             len(column.cards) - 1,
-            PlayedCard(
-                instance_id=instance.instance_id,
-                card_id=instance.card_id,
-                origin_event_id=instance.origin_event_id,
-                is_support=True,
-            ),
+            PlayedCard(instance_id=instance.instance_id, card_id=instance.card_id, is_support=True),
         )
         pushed = None
         if len(column.cards) > self.column_capacity:
             pushed = column.cards.pop(0)
-            state.trait_discard.append(
-                CardInstance(pushed.instance_id, pushed.card_id, pushed.origin_event_id)
-            )
-        self._log_action(state, {"kind": "support", "card_id": card_id, "column": column_index,
-                                 "pushed_out": pushed.instance_id if pushed else None})
+            state.trait_discard.append(CardInstance(pushed.instance_id, pushed.card_id))
+        self._log_action(
+            state,
+            {
+                "kind": "support",
+                "card_id": card_id,
+                "column": column_index,
+                "pushed_out": pushed.instance_id if pushed else None,
+            },
+        )
 
     def activate(self, state: GameState, column_index: int, option_index: int = 0) -> ActionOption:
         self._require_phase(state, RoundPhase.ACTIONS)
@@ -300,41 +261,67 @@ class GameEngine:
         assert state.current_round is not None
         if top.activated_round == state.current_round.round_number:
             raise InvalidDecision("a physical card may activate only once per round")
-        if not self._requirements_met(state, column_index, card.activation_requirements):
-            raise InvalidDecision("the column does not meet the activation requirements")
+        if not self._activation_requirements_met(state, column_index, card.activation_requirements):
+            raise InvalidDecision("the other cards in the column do not meet the activation requirements")
         if not 0 <= option_index < len(card.options):
             raise InvalidDecision("action option index is out of range")
         option = card.options[option_index]
-        # All validation above is complete before state changes.
         top.activated_round = state.current_round.round_number
         state.current_round.prosperity_base += option.prosperity
         state.current_round.shields.extend(option.shields)
         state.current_round.bonus_draws += option.draw_cards
-        state.next_retention_bonus += option.retain_bonus
         if option.draw_cards:
             self._draw_to_hand(state, option.draw_cards)
-        self._log_action(state, {"kind": "activate", "card_id": top.instance_id,
-                                 "column": column_index, "option_index": option_index,
-                                 "prosperity": option.prosperity,
-                                 "shields": tuple(option.shields)})
+        self._log_action(
+            state,
+            {
+                "kind": "activate",
+                "card_id": top.instance_id,
+                "column": column_index,
+                "option_index": option_index,
+                "prosperity": option.prosperity,
+                "shields": tuple(option.shields),
+            },
+        )
         return option
 
     def resolve_environment(self, state: GameState) -> RoundRecord:
+        """Resolve prosperity, exponential hazards, then optimization."""
+
         self._require_phase(state, RoundPhase.ACTIONS)
         assert state.current_round is not None
         context = state.current_round
-        event = self.current_event(state)
-        raw_damage = max(0, int(event.stage_damage.get(context.stage, 0)))
-        applicable = tuple(shield for shield in context.shields if shield.hazard_tags & event.hazard_tags)
-        shield_amount = sum(shield.amount for shield in applicable)
-        damage = max(0, raw_damage - shield_amount)
-        state.cumulative_damage += damage
-        extinct = state.cumulative_damage >= self.extinction_threshold
-        prosperity_delta = 0 if extinct else context.prosperity_base * state.size.prosperity_multiplier
-        if not extinct:
-            state.prosperity += prosperity_delta
+        disaster = self.current_disaster(state)
+        score_before = state.prosperity
+        prosperity_delta = context.prosperity_base * state.size.prosperity_multiplier
+        state.prosperity += prosperity_delta
+        score_after_prosperity = state.prosperity
+
+        defense_by_hazard: dict[str, int] = {}
+        unblocked_by_hazard: dict[str, int] = {}
+        penalty_by_hazard: dict[str, int] = {}
+        for hazard in sorted(disaster.hazard_tags):
+            defense = sum(shield.amount for shield in context.shields if shield.hazard_tag == hazard)
+            unblocked = max(0, context.hazard_rolls[hazard] - defense)
+            penalty = 0 if unblocked == 0 else 2 ** unblocked
+            defense_by_hazard[hazard] = defense
+            unblocked_by_hazard[hazard] = unblocked
+            penalty_by_hazard[hazard] = penalty
+        hazard_penalty = sum(penalty_by_hazard.values())
+        state.prosperity = max(0, state.prosperity - hazard_penalty)
+        score_after_hazard = state.prosperity
+
+        actual_tags = self.board_tags(state)
+        required_tags = dict(disaster.optimization.required_root_tags)
+        optimization_met = all(actual_tags[tag] >= amount for tag, amount in required_tags.items())
+        optimization_half_loss = 0
+        if not optimization_met:
+            score_before_half = state.prosperity
+            state.prosperity //= 2
+            optimization_half_loss = score_before_half - state.prosperity
+
         state.round_number += 1
-        state.phase = RoundPhase.EXTINCT if extinct else (RoundPhase.COMPLETE if state.round_number >= self.rounds else RoundPhase.IDLE)
+        state.phase = RoundPhase.COMPLETE if state.round_number >= self.rounds else RoundPhase.IDLE
         columns_after = tuple(tuple(item.instance_id for item in column.cards) for column in state.columns)
         pushed_out = tuple(
             pushed
@@ -347,23 +334,28 @@ class GameEngine:
         )
         record = RoundRecord(
             round_number=context.round_number,
-            stage=context.stage,
-            environment_id=context.environment_id,
+            disaster_id=context.disaster_id,
             size_before=context.size_before,
             size=state.size,
             candidates=context.candidate_ids,
             retained=context.retained_ids,
             actions=tuple(context.action_log),
             pushed_out=pushed_out,
-            raw_damage=raw_damage,
-            shield_amount=shield_amount,
-            shield_details=applicable,
-            damage=damage,
+            hazard_rolls=dict(context.hazard_rolls),
+            defense_by_hazard=defense_by_hazard,
+            unblocked_by_hazard=unblocked_by_hazard,
+            penalty_by_hazard=penalty_by_hazard,
+            hazard_penalty=hazard_penalty,
             prosperity_base=context.prosperity_base,
             prosperity_delta=prosperity_delta,
+            score_before=score_before,
+            score_after_prosperity=score_after_prosperity,
+            score_after_hazard=score_after_hazard,
+            optimization_met=optimization_met,
+            optimization_required_tags=required_tags,
+            optimization_actual_tags=dict(actual_tags),
+            optimization_half_loss=optimization_half_loss,
             total_prosperity=state.prosperity,
-            cumulative_damage=state.cumulative_damage,
-            extinct=extinct,
             hand_after=tuple(item.instance_id for item in state.hand),
             columns_after=columns_after,
         )
@@ -372,7 +364,7 @@ class GameEngine:
         return record
 
     def resolve_round(self, state: GameState, decision: RoundDecision) -> RoundRecord:
-        """Atomic convenience API for bots and deterministic tests."""
+        """Atomic convenience API for deterministic callers."""
 
         working = copy.deepcopy(state)
         self.start_round(working)
@@ -391,10 +383,7 @@ class GameEngine:
             size = policy.choose_size(state, self) if hasattr(policy, "choose_size") else state.size
             self.choose_size(state, size)
             candidates = tuple(state.current_round.candidate_ids) if state.current_round else ()
-            retained = (
-                policy.choose_retained(state, candidates, self)
-                if hasattr(policy, "choose_retained") else ()
-            )
+            retained = policy.choose_retained(state, candidates, self) if hasattr(policy, "choose_retained") else ()
             self.retain_cards(state, retained)
             if hasattr(policy, "take_actions"):
                 policy.take_actions(state, self)
@@ -405,31 +394,26 @@ class GameEngine:
         return state
 
     # -------------------------------------------------------------- inspectors
-    def eligible_extremes(self, state: GameState) -> tuple[ExtremeAdaptation, ...]:
-        stage = self.current_stage(state)
-        result = []
-        for item in self.public_extremes(state):
-            if item.id in state.claimed_extreme_ids or item.unlock_stage > stage:
-                continue
-            if any(self._requirements_met(state, index, item.required_root_tags) for index in range(len(state.columns))):
-                result.append(item)
-        return tuple(result)
-
-    def public_extremes(self, state: GameState) -> tuple[ExtremeAdaptation, ...]:
-        """All environment-attached routes, including currently locked ones."""
-
-        result = []
-        for attached in self.current_event(state).extreme_adaptations:
-            item = attached if isinstance(attached, ExtremeAdaptation) else self.extremes.get(attached)
-            if item is not None and item.id not in state.claimed_extreme_ids:
-                result.append(item)
-        return tuple(result)
-
     def column_tags(self, state: GameState, column_index: int) -> Counter[str]:
         self._validate_column(column_index)
         tags: Counter[str] = Counter()
         for played in state.columns[column_index].cards:
             tags.update(self.traits[played.card_id].root_tags)
+        return tags
+
+    def activation_tags(self, state: GameState, column_index: int) -> Counter[str]:
+        """Tags supplied to the top card, excluding that physical card itself."""
+
+        self._validate_column(column_index)
+        tags: Counter[str] = Counter()
+        for played in state.columns[column_index].cards[:-1]:
+            tags.update(self.traits[played.card_id].root_tags)
+        return tags
+
+    def board_tags(self, state: GameState) -> Counter[str]:
+        tags: Counter[str] = Counter()
+        for index in range(len(state.columns)):
+            tags.update(self.column_tags(state, index))
         return tags
 
     # --------------------------------------------------------------- internals
@@ -450,13 +434,8 @@ class GameEngine:
 
     def _current_candidate_instances(self, state: GameState) -> list[CardInstance]:
         assert state.current_round is not None
-        by_id = {item.instance_id: item for item in state.trait_deck}
-        by_id.update({item.instance_id: item for item in state.trait_discard})
-        # Candidates have already been popped from the deck.  Keep their
-        # objects in a private transient list on the context for exact identity.
         if state.current_round.candidate_instances:
             return list(state.current_round.candidate_instances)
-        # Fallback for serialized contexts: candidate ids are normal ids.
         return [CardInstance(item_id, item_id) for item_id in state.current_round.candidate_ids]
 
     def _draw_to_hand(self, state: GameState, count: int) -> None:
@@ -478,8 +457,10 @@ class GameEngine:
                 return item
         raise InvalidDecision(f"card is not in hand: {card_id}")
 
-    def _requirements_met(self, state: GameState, column_index: int, requirements: dict[str, int] | Any) -> bool:
-        tags = self.column_tags(state, column_index)
+    def _activation_requirements_met(
+        self, state: GameState, column_index: int, requirements: dict[str, int] | Any
+    ) -> bool:
+        tags = self.activation_tags(state, column_index)
         return all(tags[tag] >= amount for tag, amount in requirements.items())
 
     def _on_play(self, card: TraitCard, state: GameState) -> None:
@@ -490,7 +471,6 @@ class GameEngine:
         state.current_round.prosperity_base += option.prosperity
         state.current_round.shields.extend(option.shields)
         self._draw_to_hand(state, option.draw_cards)
-        state.next_retention_bonus += option.retain_bonus
 
     def _apply_command(self, state: GameState, action: ActionCommand) -> None:
         if action.kind == "play":
@@ -525,5 +505,6 @@ class GameEngine:
     def _commit(target: GameState, source: GameState) -> None:
         target.__dict__.clear()
         target.__dict__.update(source.__dict__)
+
 
 __all__ = ["GameEngine", "InvalidDecision"]
