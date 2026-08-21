@@ -688,3 +688,55 @@ All five roles passed. Iterations 13, 14, and 15 are three consecutive stable re
 - Keep all diagnostic bots and paired-seed metrics as regression tests for future content.
 - Monitor midgame Large lock, one-card-only policies, fixed Tiny's lack of value, and rare Camponotus activation.
 - Begin human usability testing through the minimal CLI before proposing any visual polish.
+
+## v0.2 Phase 1 — acceleration-loop design review
+
+### Scope
+
+No simulations were counted for the redesign yet. Five independent GPT-5.6 Luna reviews examined the new source-of-truth design as systems designer, balance designer, ant-trait designer, simplicity reviewer, and adversarial playtester. The parent Sol integrated the findings without majority vote.
+
+### Accepted initial rules
+
+- Size candidate counts 6/5/4/3/2 and prosperity multipliers 0/0/1/2/3.
+- Hand 4, established traits 3, maximum one keep and one establishment per round.
+- Establishment occurs after the event and candidate step and becomes active next round.
+- Established-only load 0/1; candidate count has a floor of one.
+- Extinction damage threshold 5, no healing, mass extinction at a hidden R12–18 with one-round warning.
+- Six wave families with two copies each; IV ends harmlessly.
+- No initial play costs, multi-play, independent latent mode, shocks, sequence rules, growth costs, or survival bonus.
+
+### Important findings
+
+- A no-countermeasure I→II→III wave deals 1+2+4=7, while countermeasure 1 reduces it to 0+1+2=3. Threshold 5 makes minimum preparation consequential but may be too abrupt.
+- One-card-per-round establishment prevents storing four cards and committing all of them immediately before acceleration.
+- Keeping earned points after early extinction could enable a deliberate score-and-die strategy; it must be attacked rather than assumed safe.
+- With size-independent event damage, raising size on the known final round has no future adaptability cost. This may be acceptable cash-out behavior or a structural failure; simulation and representative logs must decide.
+- Existing 15 ant traits can remain distinctive using prosperity, threat countermeasures, stage conditions, size conditions, and one-shot consumption. A separate latent subsystem is not needed initially.
+
+### Sol decision
+
+Implement this minimal baseline without tuning it first. The first measured iteration must attack rush, long preparation, prosperity-only, defense-only, fill-hand-then-commit, final-warning growth, suicide scoring, forced-card picks, and deck cycling. The most important observed failure—not the largest list of reviewer concerns—will determine the next change.
+
+## v0.2 design addendum — internal trump-card experiment plan
+
+### Status
+
+Documentation only. No implementation, automated simulation, stability count, or `promising` claim was made.
+
+### Question
+
+Can a few visibly stronger cards create a memorable sense that an ant lineage has reached its final form, while preserving real reasons to wait, discard the card, or choose another evolutionary route?
+
+### Planned comparison
+
+- A: no requirement, evolution load 2–3.
+- B: up to two existing lineage/tag requirements.
+- C: a matching ecological event at III.
+- D: one size or lineage requirement plus load 2–3; current leading hypothesis.
+- E: simple establishment cost using an existing hand/candidate opportunity, only as a control if load is insufficient.
+
+Each primary variant receives only one or two representative cards and is compared independently against the same ordinary-card baseline and paired seeds. `切り札カード` is an internal label only; no player-facing type name, separate deck, new currency, or restored v0.1 play-budget system is introduced.
+
+### Required qualitative evidence
+
+Representative histories must show when the card was first seen, how long it occupied the hand, when its condition became true, what was sacrificed by establishing it, how sharply scoring changed, and at least some games where delaying or rejecting it was better. The `dilemma_playtester` and `ant_trait_reviewer` must assess whether the result feels like a distinctive ant lineage rather than a large generic bonus.

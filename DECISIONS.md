@@ -220,3 +220,65 @@ Accepted:
 Why:
 
 All five review roles passed three consecutive disjoint-seed iterations. Contextual warning response led mean score, midgame Large lock often led win share, and neither dominated both. Representative seeds reversed the preferred size route and latent-insurance choice. Fixed Huge, fixed Small, endgame rushes, forced traits, load-zero stacking, single-card-only play, and public-stage recipes did not produce a clear winning pattern. The remaining issues—weak fixed Tiny, near-equal one-card-only performance in one policy, and implementation compatibility debt—are monitoring or engineering concerns rather than a failure of the central prosperity/adaptability dilemma.
+
+## D-013 — v0.2 Phase 1: replace retreat play with an acceleration loop
+
+Date: 2026-08-20
+
+Accepted for the first redesigned headless build:
+
+- Start at Small; retain five sizes and one-step movement.
+- Use candidate counts 6/5/4/3/2 and prosperity multipliers 0/0/1/2/3.
+- Separate a four-card hand from three established traits.
+- Keep at most one candidate and establish at most one card per round; new traits work next round.
+- Only established traits have effect and evolution load. Initial load values are 0 or 1, and at least one candidate is always seen.
+- Use cumulative extinction damage with threshold 5 and no recovery.
+- Draw the mass-extinction deadline uniformly from rounds 12–18 and reveal it at least one round ahead.
+- Keep previously earned prosperity after early extinction as a measured hypothesis, with no survival bonus.
+- Use six wave-event families with two deck copies each. Stage IV is harmless resolution and removal.
+
+Removed or deferred:
+
+- v0.1 play costs, evolution budget, multiple-card play, growth cost, shedding, and dormant/activated latent state.
+- Shock events, event-order interactions, healing, and survival bonuses.
+
+Why:
+
+The redesign must first test one question: whether preparing a prosperity engine and defenses while Small creates a variable decision about when to accelerate. Hand/established state and evolution load directly serve that question. The removed systems add currencies, timing exceptions, or safety valves before the new loop has evidence that it needs them.
+
+Structural risks to measure before changing rules:
+
+- Event-I damage plus threshold 5 may make preparation too short.
+- Retained score may reward intentional early extinction.
+- A known final round weakly favors the largest reachable size when damage is size-independent.
+- Seeing six of fifteen traits per Tiny round may make deck cycling too reliable.
+
+This is a new experimental baseline and inherits none of v0.1's three-iteration `promising` count.
+
+## D-014 — document internal “trump card” experiments
+
+Date: 2026-08-20
+
+Accepted as an experiment plan, not yet as a player rule:
+
+- Use `切り札カード` only as an internal development and analysis label for memorable end points of an ant lineage, not merely normal cards with larger numbers.
+- Do not expose a collective type name, rarity label, special frame, or separate deck to players; show only each trait's individual name and rules.
+- Compare four primary forms independently: high evolution load, lineage requirements, crisis unlocks, and requirement plus high load.
+- Treat requirement plus high load as the leading hypothesis, while using load-only as the simplest control.
+- Mix only one or two experiment cards into the ordinary trait deck; do not add a separate trump-card deck.
+- Let an unmet trump card occupy an ordinary hand slot, making a long-term goal costly without a new currency.
+- Allow load 2–3 and prosperity 3–5 only inside these isolated experiments; ordinary v0.2 cards remain load 0–1.
+- Include a simple establishment-cost control only if load cannot create enough contrast. It must reuse hand/candidate opportunity cost rather than restore v0.1's budget subsystem.
+
+Why:
+
+The new acceleration loop benefits from cards whose future cost naturally expires near mass extinction. A high-load trump card can make the final commitment dramatic while reinforcing, rather than bypassing, the prosperity-versus-flexibility dilemma. Requirement cards can also turn an early draw into a lineage goal, but they risk fixed build orders and dead hands, so they must be compared rather than assumed superior.
+
+Guardrails:
+
+- Establish the normal-card v0.2 baseline before adding any trump-card experiment.
+- Test one form at a time on paired seeds.
+- Reject forms that are automatic keeps, automatic establishments, near-impossible plays, or mandatory for winning.
+- Judge representative histories for anticipation, payoff, regret, and ant-specific identity; win rates alone are insufficient.
+
+No implementation or simulation was authorized as part of this documentation update.

@@ -20,4 +20,4 @@ python -m ant_game.simulation --history warning_perimeter_selective_latent --his
 python -m pytest -q
 ```
 
-The current design source of truth is `GAME_DESIGN.md`. The rules implemented by this CLI are archived in `docs/archive/2026-08-20-v0.1-promising/GAME_DESIGN.md`; accepted historical changes are in `DECISIONS.md`, and measured iterations are in `PLAYTEST_LOG.md`.
+The current design source of truth is `GAME_DESIGN.md`. `CULMINATION_TRAITS_EXPERIMENTS.md` is an incorporated experiment brief for future high-impact trait comparisons, not an implemented rule. The rules implemented by this CLI are archived in `docs/archive/2026-08-20-v0.1-promising/GAME_DESIGN.md`; accepted historical changes are in `DECISIONS.md`, and measured iterations are in `PLAYTEST_LOG.md`.
