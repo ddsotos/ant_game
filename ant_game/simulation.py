@@ -24,10 +24,18 @@ def play_game(strategy: str, seed: int, **settings: Any) -> GameState:
     return engine.run(make_strategy(strategy, seed=seed))
 
 
-def _game_metrics(state: GameState, extreme_ids: set[str]) -> dict[str, Any]:
+def _game_metrics(
+    state: GameState,
+    extreme_ids: set[str],
+    design_roles: dict[str, str],
+) -> dict[str, Any]:
     history = state.history
     actions = [action for row in history for action in row.actions]
     retained = [card_id for row in history for card_id in row.retained]
+    activated_ids = [
+        action["card_id"] for action in actions if action["kind"] == "activate"
+    ]
+    activation_roles = Counter(design_roles.get(card_id, "Unknown") for card_id in activated_ids)
     size_counts = Counter(row.size.name.lower() for row in history)
     shield_granted = sum(row.shield_amount for row in history)
     shield_used = sum(min(row.raw_damage, row.shield_amount) for row in history)
@@ -48,6 +56,10 @@ def _game_metrics(state: GameState, extreme_ids: set[str]) -> dict[str, Any]:
         "played": sum(action["kind"] == "play" for action in actions),
         "supported": sum(action["kind"] == "support" for action in actions),
         "activated": sum(action["kind"] == "activate" for action in actions),
+        "foundation_activated": activation_roles["Foundation"],
+        "bridge_activated": activation_roles["Bridge"],
+        "payoff_activated": activation_roles["Payoff"],
+        "extreme_activated": activation_roles["Extreme"],
         "push_outs": sum(len(row.pushed_out) for row in history),
         "extremes_retained": sum(card_id in extreme_ids for card_id in retained),
         "shield_granted": shield_granted,
@@ -87,6 +99,10 @@ def _aggregate(games: list[dict[str, Any]], win_credit: float) -> dict[str, Any]
         "played",
         "supported",
         "activated",
+        "foundation_activated",
+        "bridge_activated",
+        "payoff_activated",
+        "extreme_activated",
         "push_outs",
         "extremes_retained",
         "shield_granted",
@@ -128,6 +144,9 @@ def simulate_strategies(
     per_strategy: dict[str, list[dict[str, Any]]] = defaultdict(list)
     wins = Counter()
     extreme_ids = {item.id for item in EXTREMES}
+    design_roles = {
+        card.id: card.design_role for card in (*TRAITS, *(item.as_trait() for item in EXTREMES))
+    }
     for seed in range(seed_start, seed_start + games):
         states = {name: play_game(name, seed, **settings) for name in names}
         best_key = max(
@@ -142,7 +161,7 @@ def simulate_strategies(
         for winner in winners:
             wins[winner] += credit
         for name, state in states.items():
-            per_strategy[name].append(_game_metrics(state, extreme_ids))
+            per_strategy[name].append(_game_metrics(state, extreme_ids, design_roles))
     return {
         "metadata": {
             "games_per_strategy": games,
@@ -220,12 +239,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         print(f"paired seeds={args.games}; survival first; ties split")
-        print(f"{'strategy':22} {'score':>7} {'survive':>8} {'win%':>7} {'damage':>8} {'shield':>8}")
+        print(
+            f"{'strategy':22} {'score':>7} {'survive':>8} {'win%':>7} "
+            f"{'damage':>8} {'shield':>8} {'payoff':>8}"
+        )
         for name, row in result["strategies"].items():
             print(
                 f"{name:22} {row['mean_score']:7.2f} {100 * row['survival_rate']:7.1f}% "
                 f"{100 * row['win_rate']:6.1f}% {row['mean_damage']:8.2f} "
-                f"{row['mean_shield_used']:8.2f}"
+                f"{row['mean_shield_used']:8.2f} {row['mean_payoff_activated']:8.2f}"
             )
     return 0
 

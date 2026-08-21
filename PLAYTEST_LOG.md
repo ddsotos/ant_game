@@ -805,3 +805,41 @@ Iteration 1 is not stable and does not count toward `promising`. Do not tune siz
 2. Replace column-0 tie-breaking with column-aware diagnostic policies and counterfactual placement/action logging, while retaining a single-column exploit probe.
 
 Per the approved review process, these changes require user approval before implementation. Next test: rerun the same paired seeds after only these content/measurement corrections.
+
+## v0.3 Iteration 2 — uniform Payoff requirement +2 experiment
+
+### Authorized change
+
+At the user's request, add two to every listed root-tag threshold on all fourteen normal Payoff cards. A requirement of Morphology 1 / Movement 1 therefore becomes Morphology 3 / Movement 3. Foundation, Bridge, starter, and environment-attached Extreme requirements remain unchanged. This is an isolated experiment, not yet an accepted `GAME_DESIGN.md` rule.
+
+### Tests and simulations
+
+- 30 automated tests passed.
+- Repeated the same 500 paired seeds across the six core and seven exploit policies.
+- Fresh balance and dilemma Luna reviews ran additional 1,000-game and randomized-column probes.
+
+| Strategy | Mean score | Survival | Win credit | Payoff activations/game |
+|---|---:|---:|---:|---:|
+| prosperity_first | 10.51 | 55.2% | 5.9% | 0.71 |
+| adaptability_first | 3.47 | 86.2% | 1.9% | 0.00 |
+| reactive | 8.63 | 78.4% | 4.0% | 0.74 |
+| specialist | 9.71 | 66.2% | 16.2% | 0.56 |
+| generalist | 9.72 | 72.0% | 16.9% | 0.82 |
+| always_giant | 11.91 | 35.0% | 20.3% | 0.54 |
+| final_turn_giant | 10.06 | 65.0% | 18.8% | 0.63 |
+
+Compared with the zero-bonus baseline, typical mean scores fell from 22–30 to 8–12. In a separate in-memory +1 comparison, prosperity-first scored 25.37, reactive 20.49, generalist 24.18, and always-Giant 28.38; +1 preserved much more of the original reward layer.
+
+### Qualitative result
+
+- Fresh randomized-column policies reduced the column-0 rate from 100% to roughly one third and activated 1.64–1.77 Payoffs per game. Therefore +2 does not make every Payoff literally impossible.
+- Seed 6 / Army Ant Raid: R1 Odontomachus became support in the Earthwork column; R2 Head-Barricade extended it; R3 Cephalotes Living Gate was retained and placed; R4 the completed Payoff activated and prevented the raid damage. The player delayed reward and used support to finish a lineage.
+- Some roots are much harder than others. Pheidole Supermajor Program needs Caste 3 / Morphology 3 and consumes almost the entire five-card column, making a normal Payoff feel closer to an Extreme Adaptation.
+- Existing deterministic bots still choose column 0 on ties, so their 0–0.82 activation rates understate what deliberate multi-column play can achieve.
+
+### Reviews and Sol status
+
+- balance: uniform +2 is too severe as a general tuning value; it suppresses scoring and survival rather than only creating preparation.
+- dilemma: +2 can produce genuine multi-round build stories when columns are selected intelligently, but the current Bot field cannot measure their frequency reliably.
+
+This iteration is not stable and does not count toward `promising`. Keep the +2 implementation as the current inspectable experiment, but do not update `GAME_DESIGN.md` or treat it as accepted balance. Sol recommends fixing column-aware measurement first, then comparing uniform +1 against +2 on identical seeds. User approval is required before that next change.

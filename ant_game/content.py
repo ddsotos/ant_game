@@ -15,6 +15,7 @@ from .models import ActionOption, CardRole, EventCard, ExtremeAdaptation, Shield
 
 ROOT_TAGS = frozenset({"Morphology", "Chemistry", "Cooperation", "Caste", "Nesting", "Movement", "Resource Ecology"})
 STAGE_DAMAGE = {1: 0, 2: 2, 3: 4, 4: 2}
+PAYOFF_REQUIREMENT_BONUS = 2
 
 
 def _shield(*hazards: str, amount: int) -> ShieldSpec:
@@ -22,6 +23,11 @@ def _shield(*hazards: str, amount: int) -> ShieldSpec:
 
 
 def _action(card_id, name, tags, requirements, options, source_taxon, biology_basis, biology_source, design_role, text):
+    if design_role == "Payoff":
+        requirements = {
+            tag: amount + PAYOFF_REQUIREMENT_BONUS
+            for tag, amount in requirements.items()
+        }
     return TraitCard(id=card_id, name=name, root_tags=tags, role=CardRole.ACTION,
                      activation_requirements=requirements, options=options,
                      source_taxon=source_taxon, biology_basis=biology_basis,
@@ -119,4 +125,4 @@ EVENT_BY_ID = MappingProxyType({card.id: card for card in EVENTS})
 EXTREME_BY_ID = MappingProxyType({card.id: card for card in EXTREMES})
 
 
-__all__ = ["EVENTS", "EVENT_CARDS", "EVENT_BY_ID", "EXTREMES", "EXTREME_BY_ID", "NORMAL_TRAITS", "ROOT_TAGS", "STARTERS", "STAGE_DAMAGE", "TRAITS", "TRAIT_CARDS", "TRAIT_BY_ID"]
+__all__ = ["EVENTS", "EVENT_CARDS", "EVENT_BY_ID", "EXTREMES", "EXTREME_BY_ID", "NORMAL_TRAITS", "PAYOFF_REQUIREMENT_BONUS", "ROOT_TAGS", "STARTERS", "STAGE_DAMAGE", "TRAITS", "TRAIT_CARDS", "TRAIT_BY_ID"]

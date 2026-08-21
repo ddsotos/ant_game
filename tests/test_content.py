@@ -4,6 +4,7 @@ from ant_game.content import (
     EVENTS,
     EXTREMES,
     NORMAL_TRAITS,
+    PAYOFF_REQUIREMENT_BONUS,
     ROOT_TAGS,
     STAGE_DAMAGE,
     STARTERS,
@@ -53,6 +54,16 @@ def test_action_options_are_engine_native() -> None:
         assert all(option.draw_cards >= 0 and option.retain_bonus >= 0 for option in card.options)
         assert all(shield.amount > 0 and shield.hazard_tags for option in card.options for shield in option.shields)
         assert set(card.activation_requirements) <= ROOT_TAGS
+
+
+def test_payoff_requirements_receive_uniform_plus_two_experiment() -> None:
+    assert PAYOFF_REQUIREMENT_BONUS == 2
+    payoffs = [card for card in NORMAL_TRAITS if card.design_role == "Payoff"]
+    non_payoffs = [card for card in NORMAL_TRAITS if card.design_role != "Payoff"]
+    assert payoffs
+    assert all(card.activation_requirements for card in payoffs)
+    assert all(min(card.activation_requirements.values()) == 3 for card in payoffs)
+    assert all(max(card.activation_requirements.values()) <= 1 for card in non_payoffs)
 
 
 def test_every_environment_has_two_attached_extremes_and_five_round_curve() -> None:
