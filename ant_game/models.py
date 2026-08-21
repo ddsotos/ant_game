@@ -135,6 +135,7 @@ class PlayedCard:
     instance_id: str
     card_id: str
     origin_event_id: str | None = None
+    is_support: bool = False
     activated_round: int | None = None
 
 

@@ -1,4 +1,4 @@
-"""Minimal interactive CLI for the five-round v0.3 prototype."""
+"""人間が5ラウンドを最後まで遊べる最小CLI。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,9 @@ from collections.abc import Callable
 from .content import EVENTS, TRAITS
 from .engine import GameEngine, InvalidDecision
 from .models import GameState, Size
+
+
+STAGE_NAMES = {1: "I", 2: "II", 3: "III", 4: "IV"}
 
 
 class HumanPolicy:
@@ -20,37 +23,40 @@ class HumanPolicy:
         self.say = output_fn
 
     def choose_size(self, state: GameState, engine: GameEngine) -> Size:
+        self._show_last_round(state)
         context = state.current_round
         assert context is not None
         event = engine.current_event(state)
+        self.say("\n" + "=" * 68)
         self.say(
-            f"\nR{context.round_number}/5  {event.name} stage {context.stage}  "
-            f"raw damage={event.stage_damage.get(context.stage, 0)}"
+            f"ラウンド {context.round_number}/5  環境: {event.name}  "
+            f"Stage {STAGE_NAMES[context.stage]}  基礎ダメージ {event.stage_damage.get(context.stage, 0)}"
         )
+        forecast = " / ".join(
+            f"R{round_number}:{STAGE_NAMES[stage]}={event.stage_damage.get(stage, 0)}"
+            for round_number, stage in enumerate(engine.STAGES, start=1)
+        )
+        self.say(f"予報: {forecast}")
         self.say(
-            f"score={state.prosperity} cumulative_damage={state.cumulative_damage}/"
-            f"{engine.extinction_threshold} hand={len(state.hand)}/{engine.hand_limit}"
+            f"繁栄 {state.prosperity}  累積ダメージ "
+            f"{state.cumulative_damage}/{engine.extinction_threshold}  "
+            f"手札 {len(state.hand)}/{engine.hand_limit}"
         )
-        eligible = {item.id for item in engine.eligible_extremes(state)}
-        self.say("public environment adaptations:")
-        for item in engine.public_extremes(state):
-            status = "eligible" if item.id in eligible else "locked"
-            self.say(
-                f"  {item.id}: {item.name} [{status}; "
-                f"{self._requirements(item.required_root_tags)}] — {item.text}"
-            )
+        self._show_public_extremes(state, engine)
+
         legal = engine.legal_sizes(state)
+        self.say("\nサイズを選択:")
         for size in legal:
             self.say(
-                f"  {size.name.lower():6} multiplier=x{size.prosperity_multiplier} "
-                f"retention={engine.retention_curve[size]}"
+                f"  {size.name.lower():6}  繁栄倍率×{size.prosperity_multiplier}  "
+                f"通常保持{engine.retention_curve[size]}枚"
             )
         by_name = {size.name.lower(): size for size in legal}
         while True:
             answer = self.ask("size> ").strip().lower()
             if answer in by_name:
                 return by_name[answer]
-            self.say("choose: " + ", ".join(by_name))
+            self.say("次から選択: " + ", ".join(by_name))
 
     def choose_retained(
         self,
@@ -58,103 +64,214 @@ class HumanPolicy:
         candidates: tuple[str, ...],
         engine: GameEngine,
     ) -> tuple[str, ...]:
-        self.say("normal candidates:")
+        self.say("\n公開された通常カード:")
         for instance_id in candidates:
-            card = engine.traits[instance_id]
-            requirements = self._requirements(card.activation_requirements)
-            self.say(
-                f"  {instance_id}: {card.name} [{', '.join(sorted(card.root_tags))}] "
-                f"requires {requirements} — {card.text}"
-            )
+            self._show_card(engine.traits[instance_id], prefix=f"  {instance_id}")
+
         extremes = engine.eligible_extremes(state)
         if extremes:
-            self.say("environment adaptations available (use normal retention):")
+            self.say("\n取得可能な環境適応（通常保持枠を1つ使用）:")
             for item in extremes:
-                self.say(
-                    f"  {item.id}: {item.name} requires "
-                    f"{self._requirements(item.required_root_tags)} — {item.text}"
-                )
+                self._show_card(item.as_trait(), prefix=f"  {item.id}")
+
         available = set(candidates) | {item.id for item in extremes}
         limit = min(engine.retention_limit(state), engine.hand_limit - len(state.hand))
         while True:
-            raw = self.ask(f"keep up to {limit} comma-separated ids (blank=none)> ").strip()
-            chosen = tuple(item.strip() for item in raw.split(",") if item.strip())
-            if len(chosen) <= limit and len(chosen) == len(set(chosen)) and set(chosen) <= available:
+            raw = self.ask(
+                f"保持するIDを最大{limit}枚、カンマ区切りで入力（空欄=0枚）> "
+            ).strip()
+            chosen = tuple(item.strip().lower() for item in raw.split(",") if item.strip())
+            if (
+                len(chosen) <= limit
+                and len(chosen) == len(set(chosen))
+                and set(chosen) <= available
+            ):
                 return chosen
-            self.say("invalid, duplicate, unavailable, or too many card ids")
+            self.say("ID、重複、保持上限のいずれかが不正です。")
 
     def take_actions(self, state: GameState, engine: GameEngine) -> None:
-        self.say("actions: play CARD COLUMN | support CARD COLUMN | activate COLUMN [OPTION] | status | done")
+        self.say("\n進化アクション。回数制限なし。`help`でコマンドを表示します。")
         self.show_status(state, engine)
+        aliases = {
+            "置く": "play",
+            "支援": "support",
+            "起動": "activate",
+            "状態": "status",
+            "カード": "card",
+            "ヘルプ": "help",
+            "終了": "done",
+        }
         while True:
             parts = self.ask("action> ").strip().lower().split()
             if not parts:
                 continue
+            parts[0] = aliases.get(parts[0], parts[0])
+            command = parts[0]
             try:
-                if parts[0] == "done":
+                if command == "done":
                     return
-                if parts[0] == "status":
+                if command == "help":
+                    self._show_help()
+                elif command == "status":
                     self.show_status(state, engine)
-                elif parts[0] == "play" and len(parts) == 3:
-                    engine.play_card(state, parts[1], int(parts[2]) - 1)
-                elif parts[0] == "support" and len(parts) == 3:
+                elif command == "card" and len(parts) == 2:
+                    if parts[1] not in engine.traits:
+                        raise InvalidDecision("不明なカードIDです")
+                    self._show_card(engine.traits[parts[1]], prefix=parts[1])
+                elif command == "play" and len(parts) == 3:
+                    pushed = engine.play_card(state, parts[1], int(parts[2]) - 1)
+                    if pushed:
+                        self.say("押し出し: " + ", ".join(pushed))
+                    self._show_compact_state(state, engine)
+                elif command == "support" and len(parts) == 3:
                     engine.insert_support(state, parts[1], int(parts[2]) - 1)
-                elif parts[0] == "activate" and len(parts) in (2, 3):
+                    self._show_compact_state(state, engine)
+                elif command == "activate" and len(parts) in (2, 3):
                     option = int(parts[2]) - 1 if len(parts) == 3 else 0
-                    engine.activate(state, int(parts[1]) - 1, option)
+                    resolved = engine.activate(state, int(parts[1]) - 1, option)
+                    self.say("起動: " + self._option_summary(resolved))
+                    self._show_compact_state(state, engine)
                 else:
-                    self.say("unknown command")
-                    continue
-                self.show_status(state, engine)
+                    self.say("コマンド形式が違います。`help`で確認してください。")
             except (InvalidDecision, ValueError) as exc:
-                self.say(f"invalid action: {exc}")
+                self.say(f"実行できません: {exc}")
 
     def show_status(self, state: GameState, engine: GameEngine) -> None:
+        self._show_compact_state(state, engine)
+        self.say("\n手札詳細:")
+        if not state.hand:
+            self.say("  （なし）")
+        for instance in state.hand:
+            self._show_card(engine.traits[instance.card_id], prefix=f"  {instance.instance_id}")
+
+    def _show_compact_state(self, state: GameState, engine: GameEngine) -> None:
         context = state.current_round
         shield = sum(item.amount for item in context.shields) if context else 0
-        prosperity = context.prosperity_base if context else 0
+        round_prosperity = context.prosperity_base if context else 0
         self.say(
-            f"hand: {', '.join(item.instance_id for item in state.hand) or '-'}  "
-            f"round prosperity={prosperity} shield={shield}"
+            f"\n手札: {', '.join(item.instance_id for item in state.hand) or 'なし'}  "
+            f"今R繁栄={round_prosperity}  今Rシールド={shield}"
         )
-        for index, column in enumerate(state.columns, start=1):
-            cards = " > ".join(item.instance_id for item in column.cards) or "empty"
-            tags = engine.column_tags(state, index - 1)
-            tag_text = ", ".join(f"{tag}:{count}" for tag, count in sorted(tags.items())) or "none"
+        for column_index, column in enumerate(state.columns):
+            entries = []
+            for index, played in enumerate(column.cards):
+                if index == len(column.cards) - 1:
+                    marker = "先頭"
+                elif played.is_support:
+                    marker = "支援"
+                else:
+                    marker = "下層"
+                entries.append(f"{played.instance_id}({marker})")
+            tags = engine.column_tags(state, column_index)
+            tag_text = ", ".join(
+                f"{tag}:{count}" for tag, count in sorted(tags.items())
+            ) or "なし"
+            oldest = column.cards[0].instance_id if len(column.cards) >= engine.column_capacity else "—"
+            self.say(
+                f"  C{column_index + 1} [{len(column.cards)}/{engine.column_capacity}] "
+                f"{' > '.join(entries) or '空'}"
+            )
+            self.say(f"     tags: {tag_text}  次の押し出し: {oldest}")
             top = column.top
-            options = ""
             if top:
                 card = engine.traits[top.card_id]
-                options = " | ".join(
-                    f"{option_index + 1}:{option.text or self._option_summary(option)}"
-                    for option_index, option in enumerate(card.options)
-                )
-            self.say(f"  C{index} {cards}  tags[{tag_text}]  options[{options or '-'}]")
+                for option_index, option in enumerate(card.options, start=1):
+                    self.say(
+                        f"     起動{option_index}: {self._option_summary(option)} "
+                        f"条件[{self._requirements(card.activation_requirements)}]"
+                    )
+
+    def _show_public_extremes(self, state: GameState, engine: GameEngine) -> None:
+        eligible = {item.id for item in engine.eligible_extremes(state)}
+        self.say("公開中の環境適応:")
+        for item in engine.public_extremes(state):
+            status = "取得可能" if item.id in eligible else "未達"
+            self.say(
+                f"  {item.id}: {item.name} [{status}; "
+                f"{self._requirements(item.required_root_tags)}]"
+            )
+            for option_index, option in enumerate(item.options, start=1):
+                self.say(f"     起動{option_index}: {self._option_summary(option)}")
+
+    def _show_last_round(self, state: GameState) -> None:
+        if not state.history:
+            return
+        row = state.history[-1]
+        self.say("\n前ラウンド結果:")
+        self.say(
+            f"  R{row.round_number} Stage {STAGE_NAMES[row.stage]}  size={row.size.name}  "
+            f"damage={row.damage}/{row.raw_damage}（shield {row.shield_amount}）  "
+            f"prosperity=+{row.prosperity_delta}  total={row.total_prosperity}"
+        )
+        if row.pushed_out:
+            self.say("  押し出されたカード: " + ", ".join(row.pushed_out))
+
+    def _show_card(self, card, *, prefix: str) -> None:
+        self.say(
+            f"{prefix}: {card.name}  {card.design_role}  "
+            f"tags[{', '.join(sorted(card.root_tags))}]  "
+            f"条件[{self._requirements(card.activation_requirements)}]"
+        )
+        for option_index, option in enumerate(card.options, start=1):
+            self.say(f"     起動{option_index}: {self._option_summary(option)}")
+        self.say(f"     {card.text}")
+
+    def _show_help(self) -> None:
+        self.say("  play CARD COLUMN       カードを列の先頭へ置く（例: play card_id 1）")
+        self.say("  support CARD COLUMN    効果を捨て、タグだけを列へ差し込む")
+        self.say("  activate COLUMN [N]    先頭カードのN番目の効果を起動")
+        self.say("  card CARD              カード詳細を再表示")
+        self.say("  status                 手札・列・タグ・起動効果を表示")
+        self.say("  done                   環境解決へ進む")
+        self.say("  日本語別名: 置く / 支援 / 起動 / カード / 状態 / 終了")
 
     @staticmethod
     def _requirements(requirements) -> str:
-        return ", ".join(f"{tag} {amount}" for tag, amount in sorted(requirements.items())) or "none"
+        return ", ".join(
+            f"{tag} {amount}" for tag, amount in sorted(requirements.items())
+        ) or "なし"
 
     @staticmethod
     def _option_summary(option) -> str:
-        shields = sum(item.amount for item in option.shields)
-        return (
-            f"prosperity {option.prosperity}, shield {shields}, "
-            f"draw {option.draw_cards}, next-retain {option.retain_bonus}"
-        )
+        effects = []
+        if option.prosperity:
+            effects.append(f"繁栄+{option.prosperity}")
+        for shield in option.shields:
+            effects.append(
+                f"{'+'.join(sorted(shield.hazard_tags))}シールド+{shield.amount}"
+            )
+        if option.draw_cards:
+            effects.append(f"即時ドロー+{option.draw_cards}")
+        if option.retain_bonus:
+            effects.append(f"次R保持+{option.retain_bonus}")
+        return " / ".join(effects) or "数値効果なし"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--environment", choices=tuple(event.id for event in EVENTS))
+    parser.add_argument(
+        "--list-environments",
+        action="store_true",
+        help="環境IDを表示して終了",
+    )
     args = parser.parse_args(argv)
+    if args.list_environments:
+        for event in EVENTS:
+            print(f"{event.id}: {event.name}")
+        return 0
+
     engine = GameEngine(TRAITS, EVENTS, seed=args.seed)
     state = engine.new_game(environment_id=args.environment)
-    engine.run(HumanPolicy(), state)
+    policy = HumanPolicy()
+    print("アリ進化ゲーム v0.3 — 5ラウンド試作")
+    print("開始時に環境と全5ラウンドのダメージ予報が公開されます。")
+    engine.run(policy, state)
+    policy._show_last_round(state)
     print(
-        f"\nFinal: score={state.prosperity} damage={state.cumulative_damage} "
-        f"status={'extinct' if state.history[-1].extinct else 'survived'}"
+        f"\n最終結果: 繁栄={state.prosperity}  累積ダメージ={state.cumulative_damage}  "
+        f"{'絶滅' if state.history[-1].extinct else '生存'}"
     )
     return 0
 

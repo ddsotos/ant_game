@@ -128,7 +128,9 @@ class GameEngine:
         rng.shuffle(deck)
         columns = [ColumnState() for _ in range(self.column_count)]
         for index, card_id in enumerate(self.starter_ids):
-            columns[index].cards.append(PlayedCard(card_id, card_id))
+            columns[index].cards.append(
+                PlayedCard(instance_id=card_id, card_id=card_id)
+            )
         return GameState(
             seed=self.seed,
             size=Size.SMALL,
@@ -237,7 +239,11 @@ class GameEngine:
         column = state.columns[column_index]
         pushed: list[str] = []
         column.cards.append(
-            PlayedCard(instance.instance_id, instance.card_id, instance.origin_event_id)
+            PlayedCard(
+                instance_id=instance.instance_id,
+                card_id=instance.card_id,
+                origin_event_id=instance.origin_event_id,
+            )
         )
         if len(column.cards) > self.column_capacity:
             pushed_card = column.cards.pop(0)
@@ -265,7 +271,12 @@ class GameEngine:
         # Cards are oldest -> newest.  Insert immediately below the top.
         column.cards.insert(
             len(column.cards) - 1,
-            PlayedCard(instance.instance_id, instance.card_id, instance.origin_event_id),
+            PlayedCard(
+                instance_id=instance.instance_id,
+                card_id=instance.card_id,
+                origin_event_id=instance.origin_event_id,
+                is_support=True,
+            ),
         )
         pushed = None
         if len(column.cards) > self.column_capacity:

@@ -122,6 +122,7 @@ def test_action_card_may_be_sacrificed_as_tag_only_support():
     game.play_card(state, "action", 0)
     game.insert_support(state, "shield", 0)
     assert state.columns[0].top.card_id == "action"
+    assert state.columns[0].cards[-2].is_support is True
     assert game.column_tags(state, 0)["Cooperation"] == 1
 
 

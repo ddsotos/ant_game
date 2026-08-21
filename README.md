@@ -15,18 +15,29 @@ Most actions generate prosperity, a one-round disaster shield, or card flow.
 python -m ant_game.cli --seed 42
 ```
 
+The disaster is selected from the seed. To list or fix it explicitly:
+
+```powershell
+python -m ant_game.cli --list-environments
+python -m ant_game.cli --seed 42 --environment desert_heat_wave
+```
+
 Commands during the action phase are:
 
 ```text
 play CARD COLUMN
 support CARD COLUMN
 activate COLUMN [OPTION]
+card CARD
 status
+help
 done
 ```
 
 Columns are numbered from 1. Playing a card as support permanently gives up its
-action in exchange for its tags.
+action in exchange for its tags. The CLI also accepts the Japanese command
+aliases `置く`, `支援`, `起動`, `カード`, `状態`, and `終了`. Press Enter at the
+retention prompt to keep no cards.
 
 ## Simulate and inspect
 

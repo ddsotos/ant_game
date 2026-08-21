@@ -1,4 +1,4 @@
-from ant_game.cli import HumanPolicy
+from ant_game.cli import HumanPolicy, main
 from ant_game.content import EVENTS, TRAITS
 from ant_game.engine import GameEngine
 from ant_game.models import RoundPhase, Size
@@ -37,3 +37,8 @@ def test_human_policy_done_leaves_action_phase_cleanly() -> None:
     policy.take_actions(state, engine)
     assert state.phase is RoundPhase.ACTIONS
     assert any("C1" in line for line in output)
+
+
+def test_environment_list_is_available_without_starting_a_game(capsys) -> None:
+    assert main(["--list-environments"]) == 0
+    assert "flood_front" in capsys.readouterr().out
