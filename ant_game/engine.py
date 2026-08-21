@@ -295,8 +295,8 @@ class GameEngine:
         if top is None:
             raise InvalidDecision("cannot activate an empty column")
         card = self.traits[top.card_id]
-        if card.role is not CardRole.ACTION:
-            raise InvalidDecision("only an ACTION card can be activated")
+        if card.role not in (CardRole.ACTION, CardRole.STARTER):
+            raise InvalidDecision("only an ACTION or starter card can be activated")
         assert state.current_round is not None
         if top.activated_round == state.current_round.round_number:
             raise InvalidDecision("a physical card may activate only once per round")

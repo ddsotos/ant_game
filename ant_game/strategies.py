@@ -106,7 +106,7 @@ class Strategy:
         if top is None:
             return False
         card = engine.traits[top.card_id]
-        if card.role is not CardRole.ACTION or not card.options:
+        if card.role not in (CardRole.ACTION, CardRole.STARTER) or not card.options:
             return False
         choices = sorted(
             enumerate(card.options),

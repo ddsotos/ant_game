@@ -308,3 +308,22 @@ First measured baseline settings, not final balance decisions:
 Why:
 
 This is the smallest implementation that directly tests the approved new question: whether holding and arranging real-ant adaptations, then choosing between prosperity actions and temporary disaster shields, creates a meaningful five-round acceleration decision. The baseline values make the first simulation falsifiable and do not inherit v0.1's `promising` status.
+
+## D-016 — make starters usable and provide a Japanese browser client
+
+Date: 2026-08-21
+
+Accepted by direct user request:
+
+- Keep the three starter cards in their dedicated starter role, but give each an unconditional action that can activate from round one.
+- Trail Pheromone draws one card immediately; Earthwork Nest grants +1 retention next round; Collective Foraging grants +1 base prosperity.
+- Apply the normal once-per-physical-card-per-round activation limit to starters.
+- Treat these as readable tutorial baselines, not final balance values.
+- Make the human play surface Japanese and browser-based. Keep English IDs internal so the deterministic engine, tests, and simulation remain stable.
+- Retain the CLI as a debugging interface rather than the recommended human interface.
+
+Why:
+
+The previous starters displayed activation conditions but had no legal action options, so the very first board taught the player that visible cards could not be used. The browser client removes command memorization and presents the forecast, cards, columns, tags, legal actions, and round result in one Japanese play surface without changing the headless rules or adding a frontend dependency.
+
+A universal starter shield was briefly implemented but rejected before commit: it raised every deterministic non-random bot to 100% survival in a 100-seed smoke simulation and made disaster preparation largely automatic.

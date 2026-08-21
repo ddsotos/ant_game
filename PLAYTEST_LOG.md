@@ -843,3 +843,40 @@ Compared with the zero-bonus baseline, typical mean scores fell from 22–30 to 
 - dilemma: +2 can produce genuine multi-round build stories when columns are selected intelligently, but the current Bot field cannot measure their frequency reliably.
 
 This iteration is not stable and does not count toward `promising`. Keep the +2 implementation as the current inspectable experiment, but do not update `GAME_DESIGN.md` or treat it as accepted balance. Sol recommends fixing column-aware measurement first, then comparing uniform +1 against +2 on identical seeds. User approval is required before that next change.
+
+## v0.3 Player-access correction — usable starters and browser UI
+
+### Authorized changes
+
+- Make all three starter cards unconditional, once-per-round actions from round one.
+- Provide a Japanese browser client while preserving the headless engine and CLI.
+
+### Rejected smoke variant
+
+The first Earthwork Nest draft granted one universal disaster shield every round. In a 100-seed smoke run, every deterministic non-random core policy reached 100% survival. This removed most pressure to construct typed defenses, so the universal shield was rejected before commit.
+
+### Retained starter effects and smoke result
+
+- Trail Pheromone: draw one card immediately.
+- Earthwork Nest: +1 retention next round.
+- Collective Foraging: +1 base prosperity.
+
+With these effects and the still-experimental Payoff requirement +2, a 100 paired-seed smoke run produced:
+
+| Strategy | Mean score | Survival | Win credit |
+|---|---:|---:|---:|
+| prosperity_first | 20.29 | 70.0% | 43.3% |
+| adaptability_first | 5.88 | 85.0% | 3.0% |
+| reactive | 17.26 | 78.0% | 13.3% |
+| specialist | 19.00 | 76.0% | 21.3% |
+| generalist | 17.74 | 60.0% | 19.0% |
+| random | 0.12 | 2.0% | 0.0% |
+
+### Review and status
+
+- Luna starter review recommended keeping `CardRole.STARTER`, adding empty requirements and real options, and allowing the engine to activate STARTER or ACTION tops.
+- Luna browser review recommended a thin JSON projection over the existing phase API and a dependency-free HTML/CSS/JavaScript client.
+- The final implementation has Japanese card names, descriptions, effects, tags, sizes, environments, actions, and errors. English IDs remain internal.
+- 36 automated tests pass, including Japanese content coverage, starter activation, deterministic bot parity, and a complete five-round browser-service flow.
+
+This is a player-access correction, not a stable balance iteration, and does not count toward `promising`. Human play feedback is the next required evidence.

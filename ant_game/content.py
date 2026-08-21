@@ -34,8 +34,9 @@ def _action(card_id, name, tags, requirements, options, source_taxon, biology_ba
                      biology_source=biology_source, design_role=design_role, text=text)
 
 
-def _starter(card_id, name, tags, source_taxon, biology_basis, biology_source, text):
+def _starter(card_id, name, tags, options, source_taxon, biology_basis, biology_source, text):
     return TraitCard(id=card_id, name=name, root_tags=tags, role=CardRole.STARTER,
+                     activation_requirements={}, options=options,
                      source_taxon=source_taxon, biology_basis=biology_basis,
                      biology_source=biology_source, design_role="Foundation", text=text)
 
@@ -50,12 +51,15 @@ def _extreme(card_id, name, tags, requirements, options, source_taxon, biology_b
 
 STARTERS: tuple[TraitCard, ...] = (
     _starter("trail_pheromone", "Trail Pheromone", frozenset({"Chemistry", "Movement"}),
+             (ActionOption(draw_cards=1, text="Discover another route for the current foraging wave."),),
              "Formicidae (ordinary trail-laying ants)", "Many ants recruit nestmates with pheromone trails during foraging.",
              "https://pmc.ncbi.nlm.nih.gov/articles/PMC3772619/", "An ordinary chemical trail gives the species its first route to food."),
     _starter("earthwork_nest", "Earthwork Nest", frozenset({"Nesting"}),
+             (ActionOption(retain_bonus=1, text="Store options in maintained soil chambers."),),
              "Formicidae (soil-nesting ants)", "Ant colonies excavate and maintain underground chambers and entrances.",
              "https://pmc.ncbi.nlm.nih.gov/articles/PMC528881/", "A basic soil nest is a recognizably ordinary starting foundation."),
     _starter("collective_foraging", "Collective Foraging", frozenset({"Cooperation", "Resource Ecology"}),
+             (ActionOption(prosperity=1, text="Bring a shared food find back to the nest."),),
              "Formicidae (social foraging ants)", "Workers recruit nestmates and jointly exploit food resources.",
              "https://pmc.ncbi.nlm.nih.gov/articles/PMC4267257/", "The initial species can already forage together without specialization."),
 )

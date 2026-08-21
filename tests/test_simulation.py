@@ -14,6 +14,17 @@ def test_all_required_strategies_finish_or_go_extinct() -> None:
         assert 1 <= len(state.history) <= 5
 
 
+def test_bots_use_the_new_unconditional_starter_actions() -> None:
+    state = play_game("reactive", 17)
+    activated = {
+        action["card_id"]
+        for action in state.history[0].actions
+        if action["kind"] == "activate"
+    }
+    assert "trail_pheromone" in activated
+    assert "collective_foraging" in activated
+
+
 def test_all_exploit_probes_run() -> None:
     for name in strategy_names(include_exploits=True):
         assert play_game(name, 7).finished

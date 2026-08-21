@@ -19,7 +19,8 @@ from ant_game.models import (
 
 def cards():
     starters = [
-        TraitCard("s_chem", "Trail Pheromone", frozenset({"Chemistry"}), CardRole.STARTER),
+        TraitCard("s_chem", "Trail Pheromone", frozenset({"Chemistry"}), CardRole.STARTER,
+                  options=(ActionOption(draw_cards=1),)),
         TraitCard("s_nest", "Earthwork Nest", frozenset({"Nesting"}), CardRole.STARTER),
         TraitCard("s_coop", "Collective Foraging", frozenset({"Cooperation"}), CardRole.STARTER),
     ]
@@ -124,6 +125,18 @@ def test_action_card_may_be_sacrificed_as_tag_only_support():
     assert state.columns[0].top.card_id == "action"
     assert state.columns[0].cards[-2].is_support is True
     assert game.column_tags(state, 0)["Cooperation"] == 1
+
+
+def test_starter_with_an_option_can_activate_without_requirements():
+    game = GameEngine(cards(), [event()], seed=1)
+    state = game.new_game(environment_id="flood")
+    game.start_round(state)
+    game.choose_size(state, Size.SMALL)
+    game.retain_cards(state, ())
+
+    game.activate(state, 0)
+
+    assert state.columns[0].top.activated_round == 1
 
 
 def test_support_that_would_evict_current_top_is_rejected_without_consuming_card():

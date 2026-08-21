@@ -27,6 +27,7 @@ def test_pool_counts_and_unique_ids() -> None:
 def test_normal_cards_are_action_and_starters_are_explicit() -> None:
     assert all(card.role is CardRole.ACTION for card in NORMAL_TRAITS)
     assert all(card.role is CardRole.STARTER for card in STARTERS)
+    assert all(not card.activation_requirements and card.options for card in STARTERS)
     assert all(card.role is CardRole.ACTION for card in EXTREMES)
     assert not (set(card.id for card in NORMAL_TRAITS) & {item.id for item in EXTREMES})
 

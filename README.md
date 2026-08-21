@@ -9,7 +9,19 @@ larger species retain fewer of them. Cards build Daybreak-style evolutionary
 columns: covered cards keep their tags, while only the top card can activate.
 Most actions generate prosperity, a one-round disaster shield, or card flow.
 
-## Play
+## Play in a browser（ブラウザで遊ぶ）
+
+No package installation or frontend build is required. Run:
+
+```powershell
+python -m ant_game.webapp
+```
+
+The Japanese game screen opens at `http://127.0.0.1:8000/`. Keep the terminal
+open while playing; press `Ctrl+C` there to stop the server. If the browser does
+not open automatically, open that address yourself.
+
+## Play in the CLI
 
 ```powershell
 python -m ant_game.cli --seed 42
