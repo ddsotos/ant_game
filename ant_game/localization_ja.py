@@ -21,7 +21,7 @@ TAG_SYMBOLS = {
     "Resource Ecology": "leaf-seed",
 }
 PROBLEM_NAMES = {
-    "raid": "襲撃", "fungal": "菌害", "nest_damage": "巣損傷",
+    "raid": "襲撃", "sanitation": "衛生",
 }
 SIZE_NAMES = {"SMALL": "小型", "MEDIUM": "中型", "LARGE": "大型", "GIANT": "超大型"}
 ROLE_NAMES = {"Foundation": "基盤", "Payoff": "完成形", "Bridge": "橋渡し"}
@@ -32,14 +32,17 @@ EVENT_NAMES = {
     "prolonged_drought": ("長期乾燥", "長い乾季が地表の食料を失わせる。"),
     "habitat_instability": ("居住地不安定化", "巣の空間と基盤が劣化し、現在の居住地が危うくなる。"),
     "landmark_loss": ("目印消失", "風と地表変化が採餌路の目印を消す。"),
+    "dry_savanna": ("乾季サバンナ", "資源が集中し、近隣コロニーとの競争が激しくなる。"),
+    "wet_tropical_floor": ("湿潤熱帯林床", "高温多湿の落葉層が衛生維持を難しくする。"),
+    "urban_disturbance": ("都市攪乱地", "混雑、侵入者、廃棄物、壊れた営巣地が重なる。"),
 }
 
 OPTIMIZATION_NAMES = {
-    "flood": "洪水適応（生体いかだ＋樹冠退避）",
-    "desert_heat_wave": "銀毛・熱ショック保護",
-    "prolonged_drought": "地下穀倉",
-    "habitat_instability": "緊急引越し",
-    "landmark_loss": "天空コンパス航法",
+    "flood": "生体いかだ／樹冠退避",
+    "desert_heat_wave": "銀毛／熱ショック",
+    "prolonged_drought": "地下穀倉／貯蔵個体",
+    "habitat_instability": "定足数移住／樹冠再建",
+    "landmark_loss": "天空コンパス／フェロモン網",
 }
 
 CARD_NAMES = {
@@ -76,6 +79,16 @@ CARD_NAMES = {
     "cataglyphis_heatshock_proteins": "砂漠アリの熱ショック応答",
     "megaponera_termite_raid": "マタベレアリのシロアリ襲撃",
     "temnothorax_emergency_emigration": "ムネボソアリの緊急引越し",
+    "lasius_sealed_foundation": "黒庭アリの密閉創設",
+    "diacamma_gemma_inheritance": "トゲオオハリアリのジェンマ継承",
+    "platythyrea_clone_watch": "無王アリのクローン監視",
+    "ooceraea_synchronized_brood": "複製狩アリの同期繁殖",
+    "mycocepurus_clonal_garden": "菌農アリの無性菌園",
+    "cardiocondyla_dual_males": "放浪アリの二型雄",
+    "vollenhovia_three_lineage": "ウメマツアリの三系統繁殖",
+    "pristomyrmex_worker_queens": "アミメアリの単為生殖ワーカー",
+    "formica_resin_pharmacy": "樹脂アリの抗菌巣材",
+    "myrmica_funeral_workers": "欧州赤アリの葬送分業",
 }
 
 CARD_TEXTS = {
@@ -112,6 +125,16 @@ CARD_TEXTS = {
     "cataglyphis_heatshock_proteins": "分子シャペロンが、高温下の細胞機能を守る。",
     "megaponera_termite_raid": "危険な集団狩りで、大きな食料収入を狙う。",
     "temnothorax_emergency_emigration": "傷んだ巣を捨て、危険が迫る前に移住する。",
+    "lasius_sealed_foundation": "女王が最初の巣室を閉じ、蓄えだけで初期ワーカーを育てる。",
+    "diacamma_gemma_inheritance": "胸のジェンマを保ったワーカーが、次の繁殖個体になる。",
+    "platythyrea_clone_watch": "クローンのワーカーが、同じ繁殖系統の幼虫を守り続ける。",
+    "ooceraea_synchronized_brood": "繁殖相と採餌相を群れ全体で同期し、次の波を予測する。",
+    "mycocepurus_clonal_garden": "無性生殖のワーカーが、共生する菌園を安定して育てる。",
+    "cardiocondyla_dual_males": "巣に残る雄と飛び立つ雄を使い分け、繁殖の道を二つ持つ。",
+    "vollenhovia_three_lineage": "異なる三つの系統を、ひとつの社会の中で維持する。",
+    "pristomyrmex_worker_queens": "ワーカー自身が雌を産み、女王一個体への依存を減らす。",
+    "formica_resin_pharmacy": "樹脂を巣材に混ぜ、微生物の増殖を抑える。",
+    "myrmica_funeral_workers": "死骸を見つけた個体が運び出し、腐敗の広がりを防ぐ。",
 }
 
 

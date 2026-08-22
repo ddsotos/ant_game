@@ -91,3 +91,26 @@
 | Landmark Loss最適化 | 再設計 | Resource Ecology 3 | 目印消失後も採餌資源へ到達する適応として一軸化。 |
 
 この判断により、正式カード・最適化条件・日本語UIのタグ集合は Morphology / Chemistry / Sociality / Nesting / Resource Ecology の5種だけになる。
+
+## v0.7 独立問題・環境・追加カード
+
+独立問題は `raid`（襲撃）と `sanitation`（衛生）の2種に整理した。巣の損傷ペナルティと `nest_damage`、旧 `fungal` は廃止し、後者の生物学的根拠は衛生問題へ統合した。環境カードは洪水、砂漠熱波、長期乾燥、居住地不安定化、目印消失に2つの最適化パターンを印刷し、乾季サバンナ、湿潤熱帯林床、都市攪乱地には最適化を設けず、独立問題の出目を強化する。
+
+### 追加カードの名称方針
+
+以下のカード名はすべて「種の呼び名のゲーム用和訳＋の＋形質名」とした。正式和名が確認できない種は、プレイヤーが読みやすい5文字以内の仮称を使い、学名はカード名に表示しない。正確な学名は題材・研究用メタデータとフレーバーに残す。
+
+| カード名（表示） | 名称区分 | 題材（学名） | 生物学的根拠 |
+|---|---|---|---|
+| 黒庭アリの密閉創設 | ゲーム用和訳（4文字） | *Lasius niger* | 女王が密閉した創設室で初期ワーカーを育てる。 |
+| トゲオオハリアリのジェンマ継承 | 既存和名 | *Diacamma ceylonense* | 胸部ジェンマを持つワーカーが次の繁殖個体になる。 |
+| 無王アリのクローン監視 | ゲーム用和訳（4文字） | *Platythyrea punctata* | クローン繁殖するワーカーがコロニーを維持する。 |
+| 複製狩アリの同期繁殖 | ゲーム用和訳（5文字） | *Ooceraea biroi* | 繁殖相と採餌相をコロニー全体で同期する。 |
+| 菌農アリの無性菌園 | ゲーム用和訳（4文字） | *Mycocepurus smithii* | 無性生殖と菌園共生を組み合わせる。 |
+| 放浪アリの二型雄 | ゲーム用和訳（4文字） | *Cardiocondyla obscurior* | 巣内の無翅雄と分散する有翅雄を使い分ける。 |
+| ウメマツアリの三系統繁殖 | 既存和名 | *Vollenhovia emeryi* | 複数の繁殖系統を社会構造で維持する。 |
+| アミメアリの単為生殖ワーカー | 既存和名 | *Pristomyrmex punctatus* | ワーカーが単為生殖で雌を生産する。 |
+| 樹脂アリの抗菌巣材 | ゲーム用和訳（4文字） | *Formica paralugubris* | 樹脂を巣へ運び微生物増殖を抑える。 |
+| 欧州赤アリの葬送分業 | 既存和名 | *Myrmica rubra* | 死骸を検知・搬出して腐敗の滞留を短くする。 |
+
+追加カードの出典: [Lasius創設](https://academic.oup.com/biolinnean/article/142/4/397/7342048)、[Diacammaジェンマ](https://pubmed.ncbi.nlm.nih.gov/15647944/)、[Platythyreaクローン](https://pmc.ncbi.nlm.nih.gov/articles/PMC240705/)、[Ooceraea同期](https://pmc.ncbi.nlm.nih.gov/articles/PMC8244912/)、[Mycocepurus](https://pmc.ncbi.nlm.nih.gov/articles/PMC2686657/)、[Cardiocondyla二型雄](https://pmc.ncbi.nlm.nih.gov/articles/PMC3066177/)、[Vollenhovia](https://pmc.ncbi.nlm.nih.gov/articles/PMC1686177/)、[Pristomyrmex](https://pmc.ncbi.nlm.nih.gov/articles/PMC2664351/)、[Formica樹脂](https://pmc.ncbi.nlm.nih.gov/articles/PMC2275180/)、[Myrmica死骸処理](https://pmc.ncbi.nlm.nih.gov/articles/PMC11632371/)。

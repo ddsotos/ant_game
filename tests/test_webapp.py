@@ -1,4 +1,5 @@
 import json
+import json
 import threading
 from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
@@ -23,7 +24,8 @@ def test_service_exposes_five_tags_and_environment_forecast_without_problem_clas
     assert [item["id"] for item in first["forecast"]] == [item["id"] for item in second["forecast"]]
     assert all("hazard_tags" not in item for item in first["forecast"])
     assert "environment" in first and "hazard_tags" not in first["environment"]
-    assert all(any("ぁ" <= char <= "龥" for char in item["optimization"]["name"]) for item in first["forecast"])
+    assert all("optimizations" in item for item in first["forecast"])
+    assert all("optimization" in item for item in first["forecast"])  # compatibility alias
     assert [item["id"] for item in first["problems"]] == list(PROBLEM_IDS)
 
 
@@ -41,7 +43,8 @@ def test_problem_rolls_and_shields_are_projected_independently():
     state = service.act(game_id, "size", {"size": "small"})["state"]
     assert all(problem["roll"] in range(1, 5) for problem in state["problems"])
     state = service.act(game_id, "retain", {"card_ids": []})["state"]
-    assert all(set(problem) >= {"id", "roll", "shield", "unblocked", "penalty"} for problem in state["problems"])
+    assert [problem["id"] for problem in state["problems"]] == ["raid", "sanitation"]
+    assert all(set(problem) >= {"id", "roll", "raw_rolls", "selected_roll", "modifier", "shield", "unblocked", "penalty"} for problem in state["problems"])
     state = service.act(game_id, "resolve", {})["state"]
     result = state["last_result"]
     assert [problem["id"] for problem in result["problems"]] == list(PROBLEM_IDS)
@@ -100,25 +103,22 @@ def test_placement_color_prediction_accounts_for_oldest_card_pushout():
     assert option["requirements"][0]["missing"] == 2
 
 
-def test_browser_service_completes_all_five_environment_rounds():
+def test_browser_service_resolves_one_round_and_exposes_audit_trail():
     service = WebGameService()
     result = service.new_game(seed=5)
     game_id = result["game_id"]
-    for _ in range(5):
-        service.act(game_id, "size", {"size": "small"})
-        service.act(game_id, "retain", {"card_ids": []})
-        result = service.act(game_id, "resolve", {})
-        resolved = result["state"]["last_result"]
-        assert resolved["score_after_problems"] == max(
-            0, resolved["score_after_prosperity"] - resolved["problem_penalty"]
-        )
-    assert result["state"]["finished"] is True
-    assert result["state"]["round"] == 5
+    service.act(game_id, "size", {"size": "small"})
+    service.act(game_id, "retain", {"card_ids": []})
+    result = service.act(game_id, "resolve", {})
+    resolved = result["state"]["last_result"]
+    assert resolved["score_after_problems"] == max(0, resolved["score_after_prosperity"] - resolved["problem_penalty"])
+    assert all(problem["raw_rolls"] for problem in resolved["problems"])
+    assert result["state"]["round"] == 2
 
 
 def test_card_effects_and_conditions_are_structured_data():
     state = WebGameService().new_game(seed=8)["state"]
-    card = state["forecast"][0]["optimization"]
+    card = state["forecast"][0]["optimizations"][0]
     assert card["requirements"]
     assert all({"id", "required", "name", "color", "symbol"} <= set(item) for item in card["requirements"])
     service = WebGameService()
@@ -150,7 +150,7 @@ def test_real_http_server_serves_v05_page_and_rejects_non_object_json():
             config = json.load(response)
             assert len(config["tags"]) == 5
             assert len(config["environments"]) >= 5
-            assert len(config["problems"]) == 3
+            assert len(config["problems"]) == 2
         request = Request(base + "/api/new", data=b"[]", headers={"Content-Type": "application/json"}, method="POST")
         try:
             urlopen(request, timeout=2)

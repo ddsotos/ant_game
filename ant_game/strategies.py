@@ -1,4 +1,4 @@
-"""Simple, legible policies for v0.3 automated playtests.
+"""Simple, legible diagnostic policies for the current rules.
 
 The bots are diagnostic instruments rather than an NPC difficulty system.
 Each policy exposes a recognisable bias so dominant rules are easy to spot.
@@ -99,10 +99,17 @@ class Strategy:
         if top is None:
             return False
         card = engine.traits[top.card_id]
-        if card.role not in (CardRole.ACTION, CardRole.STARTER) or not card.options:
+        if card.role not in (CardRole.ACTION, CardRole.STARTER):
+            return False
+        tags = engine.activation_tags(state, column_index)
+        requirements_met = all(
+            tags[tag] >= count for tag, count in card.activation_requirements.items()
+        )
+        available_options = card.options if requirements_met else card.fallback_options
+        if not available_options:
             return False
         choices = sorted(
-            enumerate(card.options),
+            enumerate(available_options),
             key=lambda item: (self.option_value(item[1], state, engine), -item[0]),
             reverse=True,
         )
@@ -128,7 +135,7 @@ class Strategy:
                     tags[tag] >= count
                     for tag, count in card.activation_requirements.items()
                 )
-                if requirements_met:
+                if requirements_met or card.fallback_options:
                     options.append(
                         (self.card_value(card, state, engine), instance.instance_id, column_index, False)
                     )
@@ -208,7 +215,7 @@ class Reactive(Strategy):
     def choose_size(self, state, engine):
         context = state.current_round
         pressure = sum(context.problem_rolls.values()) if context else 0
-        target = Size.SMALL if pressure >= 12 else Size.LARGE
+        target = Size.SMALL if pressure >= 8 else Size.LARGE
         return self.step_toward(state, engine, target)
 
 

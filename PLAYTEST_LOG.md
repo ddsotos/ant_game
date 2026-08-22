@@ -976,3 +976,21 @@ This iteration does not count toward `promising`. The next evidence must come fr
 No NPC simulation, automated strategy batch, representative-game analysis, or human playtest was performed for this update, by explicit user request. Automated rule and interface tests are engineering verification, not playtest evidence. This update therefore does not count toward the three stable reviews required for `promising`.
 
 Next test is intentionally left to the player: use the browser build and report concrete decisions or interface problems before any balance iteration.
+
+## v0.7 Human-play baseline — raid, sanitation, and alternate Optimizations
+
+### Authorized changes
+
+- Replace raid/fungal/nest damage with exactly two recurring problems: raid and sanitation.
+- Give the five existing environments two harder, alternative Optimization patterns wherever the biology supports distinct responses.
+- Add three optimization-free habitats whose ecological conditions modify the two problem rolls in different public ways.
+- Add ten real-ant traits, primarily reproductive, using Japanese board-game names in the form “ant name's adaptation.”
+- Give total-requirement-four cards a weak automatic fallback when their full condition is unmet.
+
+### Validation boundary
+
+This iteration is to receive rule tests, content invariant tests, browser API tests, JavaScript/Python checks, and a basic HTTP startup check only. It must not run NPC strategies, simulation batches, representative-game analysis, or human play. Engineering validation is not playtest evidence.
+
+### Status
+
+This iteration does not count toward the three stable reviews required for `promising`. Quantitative results and representative decisions are intentionally absent until the player evaluates the browser build.

@@ -69,6 +69,10 @@ class TraitCard:
     role: CardRole = CardRole.ACTION
     activation_requirements: Mapping[str, int] = field(default_factory=dict)
     options: tuple[ActionOption, ...] = ()
+    # Optional weak effects used when a payoff's activation requirements are
+    # not met.  The card remains playable, but the player does not get the
+    # full payoff.  This is deliberately data rather than a new effect type.
+    fallback_options: tuple[ActionOption, ...] = ()
     source_taxon: str = ""
     biology_basis: str = ""
     biology_source: str = ""
@@ -101,15 +105,42 @@ class OptimizationRequirement:
 
 
 @dataclass(frozen=True, slots=True)
+class ProblemRollRule:
+    """How one independent ecological problem is rolled for a round."""
+
+    rolls: int = 1
+    bonus: int = 0
+
+    def __post_init__(self) -> None:
+        if self.rolls < 1:
+            raise ValueError("problem roll count must be positive")
+        if self.bonus < 0:
+            raise ValueError("problem roll bonus must not be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class EnvironmentCard:
     id: str
     name: str
-    optimization: OptimizationRequirement
+    optimizations: tuple[OptimizationRequirement, ...] = ()
+    problem_roll_rules: Mapping[str, ProblemRollRule] = field(default_factory=dict)
     text: str = ""
 
     def __post_init__(self) -> None:
         if not self.id or not self.name:
             raise ValueError("environment must have an id and name")
+        if not isinstance(self.optimizations, tuple):
+            object.__setattr__(self, "optimizations", tuple(self.optimizations))
+        if not isinstance(self.problem_roll_rules, dict):
+            object.__setattr__(self, "problem_roll_rules", dict(self.problem_roll_rules))
+        if len(self.optimizations) > 2:
+            raise ValueError("an environment may have at most two optimizations")
+        if any(not isinstance(item, OptimizationRequirement) for item in self.optimizations):
+            raise TypeError("optimizations must contain OptimizationRequirement values")
+        if any(not isinstance(problem, str) or not problem for problem in self.problem_roll_rules):
+            raise ValueError("problem roll rule ids must be non-empty strings")
+        if any(not isinstance(rule, ProblemRollRule) for rule in self.problem_roll_rules.values()):
+            raise TypeError("problem roll rules must contain ProblemRollRule values")
 
 # The old public name is kept while callers migrate from disaster cards to
 # environment cards.  Environment cards deliberately have no hazard/problem
@@ -144,7 +175,12 @@ class ColumnState:
 class RoundContext:
     round_number: int
     disaster_id: str
+    # problem_rolls is the effective value used by resolution.  The other
+    # mappings preserve the complete die audit trail for UI and replays.
     problem_rolls: dict[str, int] = field(default_factory=dict)
+    problem_raw_rolls: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    problem_selected_rolls: dict[str, int] = field(default_factory=dict)
+    problem_modifiers: dict[str, int] = field(default_factory=dict)
     size_before: Size = Size.SMALL
     candidate_ids: tuple[str, ...] = ()
     candidate_instances: list[CardInstance] = field(default_factory=list)
@@ -181,6 +217,9 @@ class RoundRecord:
     actions: tuple[dict[str, Any], ...]
     pushed_out: tuple[str, ...]
     problem_rolls: Mapping[str, int]
+    problem_raw_rolls: Mapping[str, tuple[int, ...]]
+    problem_selected_rolls: Mapping[str, int]
+    problem_modifiers: Mapping[str, int]
     defense_by_problem: Mapping[str, int]
     unblocked_by_problem: Mapping[str, int]
     penalty_by_problem: Mapping[str, int]
@@ -191,7 +230,8 @@ class RoundRecord:
     score_after_prosperity: int
     score_after_problems: int
     optimization_met: bool
-    optimization_required_tags: Mapping[str, int]
+    optimization_requirements: tuple[Mapping[str, int], ...]
+    optimization_results: tuple[bool, ...]
     optimization_actual_tags: Mapping[str, int]
     optimization_half_loss: int
     total_prosperity: int

@@ -21,6 +21,7 @@ from .models import (
     RoundDecision,
     RoundPhase,
     RoundRecord,
+    ProblemRollRule,
     Size,
     TraitCard,
 )
@@ -28,7 +29,7 @@ from .models import (
 
 # These problems are present every round, independently of the forecast
 # environment card.  Their ids are also the ids printed on typed shields.
-PROBLEM_IDS: tuple[str, ...] = ("raid", "fungal", "nest_damage")
+PROBLEM_IDS: tuple[str, ...] = ("raid", "sanitation")
 
 
 class InvalidDecision(ValueError):
@@ -147,14 +148,32 @@ class GameEngine:
         disaster = self.disasters[state.disaster_ids[state.round_number]]
         rng = random.Random()
         rng.setstate(state.rng_state)
-        # The three recurring problems are intentionally lighter than the
-        # forecast die: each is an independent d4 roll.
-        problem_rolls = {problem: rng.randint(1, 4) for problem in PROBLEM_IDS}
+        # Independent problems are d4 by default.  An environment may make a
+        # problem more severe by rolling several d4s (keep the highest) or by
+        # adding a fixed bonus.  Preserve every part of this calculation for
+        # the UI/replay instead of only keeping the final number.
+        rules = {
+            problem: disaster.problem_roll_rules.get(problem, ProblemRollRule())
+            for problem in PROBLEM_IDS
+        }
+        raw_rolls = {
+            problem: tuple(rng.randint(1, 4) for _ in range(rule.rolls))
+            for problem, rule in rules.items()
+        }
+        selected_rolls = {problem: max(values) for problem, values in raw_rolls.items()}
+        modifiers = {problem: rules[problem].bonus for problem in PROBLEM_IDS}
+        problem_rolls = {
+            problem: selected_rolls[problem] + modifiers[problem]
+            for problem in PROBLEM_IDS
+        }
         state.rng_state = rng.getstate()
         state.current_round = RoundContext(
             round_number=state.round_number + 1,
             disaster_id=disaster.id,
             problem_rolls=problem_rolls,
+            problem_raw_rolls=raw_rolls,
+            problem_selected_rolls=selected_rolls,
+            problem_modifiers=modifiers,
             size_before=state.size,
         )
         state.phase = RoundPhase.SIZE
@@ -268,11 +287,17 @@ class GameEngine:
         assert state.current_round is not None
         if top.activated_round == state.current_round.round_number:
             raise InvalidDecision("a physical card may activate only once per round")
-        if not self._activation_requirements_met(state, column_index, card.activation_requirements):
-            raise InvalidDecision("the other cards in the column do not meet the activation requirements")
-        if not 0 <= option_index < len(card.options):
+        requirements_met = self._activation_requirements_met(state, column_index, card.activation_requirements)
+        tier = "strong"
+        options = card.options
+        if not requirements_met:
+            if not card.fallback_options:
+                raise InvalidDecision("the other cards in the column do not meet the activation requirements")
+            options = card.fallback_options
+            tier = "fallback"
+        if not 0 <= option_index < len(options):
             raise InvalidDecision("action option index is out of range")
-        option = card.options[option_index]
+        option = options[option_index]
         top.activated_round = state.current_round.round_number
         state.current_round.prosperity_base += option.prosperity
         state.current_round.shields.extend(option.shields)
@@ -286,6 +311,7 @@ class GameEngine:
                 "card_id": top.instance_id,
                 "column": column_index,
                 "option_index": option_index,
+                "tier": tier,
                 "prosperity": option.prosperity,
                 "shields": tuple(option.shields),
             },
@@ -319,8 +345,17 @@ class GameEngine:
         score_after_problems = state.prosperity
 
         actual_tags = self.board_tags(state)
-        required_tags = dict(disaster.optimization.required_root_tags)
-        optimization_met = all(actual_tags[tag] >= amount for tag, amount in required_tags.items())
+        optimization_requirements = tuple(
+            dict(optimization.required_root_tags)
+            for optimization in disaster.optimizations
+        )
+        optimization_results = tuple(
+            all(actual_tags[tag] >= amount for tag, amount in requirements.items())
+            for requirements in optimization_requirements
+        )
+        # An environment without an optimization is intentionally a pressure
+        # card, not an automatic score-halving trap.
+        optimization_met = not optimization_results or any(optimization_results)
         optimization_half_loss = 0
         if not optimization_met:
             score_before_half = state.prosperity
@@ -349,6 +384,9 @@ class GameEngine:
             actions=tuple(context.action_log),
             pushed_out=pushed_out,
             problem_rolls=dict(context.problem_rolls),
+            problem_raw_rolls=dict(context.problem_raw_rolls),
+            problem_selected_rolls=dict(context.problem_selected_rolls),
+            problem_modifiers=dict(context.problem_modifiers),
             defense_by_problem=defense_by_problem,
             unblocked_by_problem=unblocked_by_problem,
             penalty_by_problem=penalty_by_problem,
@@ -359,7 +397,8 @@ class GameEngine:
             score_after_prosperity=score_after_prosperity,
             score_after_problems=score_after_problems,
             optimization_met=optimization_met,
-            optimization_required_tags=required_tags,
+            optimization_requirements=optimization_requirements,
+            optimization_results=optimization_results,
             optimization_actual_tags=dict(actual_tags),
             optimization_half_loss=optimization_half_loss,
             total_prosperity=state.prosperity,

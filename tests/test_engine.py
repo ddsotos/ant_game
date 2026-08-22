@@ -11,6 +11,7 @@ from ant_game.models import (
     CardRole,
     EnvironmentCard,
     OptimizationRequirement,
+    ProblemRollRule,
     RoundDecision,
     RoundPhase,
     ShieldSpec,
@@ -55,10 +56,10 @@ def optimization(required: dict[str, int] | None = None) -> OptimizationRequirem
 
 def disasters(*, first_requirement=None) -> list[EnvironmentCard]:
     result = [
-        EnvironmentCard("d0", "Environment 0", optimization(first_requirement)),
+        EnvironmentCard("d0", "Environment 0", (optimization(first_requirement),)),
     ]
     result.extend(
-        EnvironmentCard(f"d{i}", f"Environment {i}", optimization())
+        EnvironmentCard(f"d{i}", f"Environment {i}", (optimization(),))
         for i in range(1, 8)
     )
     return result
@@ -166,7 +167,7 @@ def test_resolve_order_is_prosperity_then_exponential_penalty_then_floor_half():
     force_first_disaster(game, state)
     state.prosperity = 100
     begin(game, state, size=Size.MEDIUM, retain=("shield",))
-    state.current_round.problem_rolls = {"raid": 3, "fungal": 2, "nest_damage": 1}
+    state.current_round.problem_rolls = {"raid": 3, "sanitation": 2}
     game.play_card(state, "shield", 0)
     game.activate(state, 0)
     state.current_round.prosperity_base += 2
@@ -175,14 +176,14 @@ def test_resolve_order_is_prosperity_then_exponential_penalty_then_floor_half():
 
     assert record.prosperity_delta == 2
     assert record.score_after_prosperity == 102
-    assert record.defense_by_problem == {"raid": 1, "fungal": 0, "nest_damage": 0}
-    assert record.unblocked_by_problem == {"raid": 2, "fungal": 2, "nest_damage": 1}
-    assert record.penalty_by_problem == {"raid": 4, "fungal": 4, "nest_damage": 2}
-    assert record.problem_penalty == 10
-    assert record.score_after_problems == 92
+    assert record.defense_by_problem == {"raid": 1, "sanitation": 0}
+    assert record.unblocked_by_problem == {"raid": 2, "sanitation": 2}
+    assert record.penalty_by_problem == {"raid": 4, "sanitation": 4}
+    assert record.problem_penalty == 8
+    assert record.score_after_problems == 94
     assert record.optimization_met is False
-    assert record.optimization_half_loss == 46
-    assert record.total_prosperity == state.prosperity == 46
+    assert record.optimization_half_loss == 47
+    assert record.total_prosperity == state.prosperity == 47
 
 
 def test_fully_defended_problem_has_zero_penalty_and_shields_expire():
@@ -191,7 +192,7 @@ def test_fully_defended_problem_has_zero_penalty_and_shields_expire():
     force_first_disaster(game, state)
     state.prosperity = 20
     begin(game, state, retain=("shield",))
-    state.current_round.problem_rolls = {"raid": 1, "fungal": 1, "nest_damage": 1}
+    state.current_round.problem_rolls = {"raid": 1, "sanitation": 1}
     game.play_card(state, "shield", 0)
     game.activate(state, 0)
     first = game.resolve_environment(state)
@@ -201,7 +202,7 @@ def test_fully_defended_problem_has_zero_penalty_and_shields_expire():
     game.start_round(state)
     game.choose_size(state, state.size)
     game.retain_cards(state, ())
-    state.current_round.problem_rolls = {"raid": 1, "fungal": 1, "nest_damage": 1}
+    state.current_round.problem_rolls = {"raid": 1, "sanitation": 1}
     second = game.resolve_environment(state)
     assert second.defense_by_problem["raid"] == 0
     assert second.penalty_by_problem["raid"] == 2
@@ -217,7 +218,7 @@ def test_optimization_counts_every_card_across_all_columns():
     force_first_disaster(game, state)
     begin(game, state, retain=("support",))
     game.insert_support(state, "support", 2)
-    state.current_round.problem_rolls = {"raid": 1, "fungal": 1, "nest_damage": 1}
+    state.current_round.problem_rolls = {"raid": 1, "sanitation": 1}
     record = game.resolve_environment(state)
     assert record.optimization_met is True
     assert record.optimization_actual_tags["Chemistry"] == 2
@@ -265,3 +266,71 @@ def test_invalid_atomic_round_does_not_mutate_state():
             ),
         )
     assert state == before
+
+
+def test_environment_roll_rule_preserves_raw_selected_and_modified_values():
+    special = EnvironmentCard(
+        "d0",
+        "Severe Environment",
+        (optimization(),),
+        {"raid": ProblemRollRule(rolls=2, bonus=2)},
+    )
+    game = GameEngine(
+        cards(),
+        [special, *disasters()[1:]],
+        seed=11,
+    )
+    state = game.new_game()
+    force_first_disaster(game, state)
+    game.start_round(state)
+    context = state.current_round
+    assert context is not None
+    assert len(context.problem_raw_rolls["raid"]) == 2
+    assert context.problem_selected_rolls["raid"] == max(context.problem_raw_rolls["raid"])
+    assert context.problem_modifiers["raid"] == 2
+    assert context.problem_rolls["raid"] == context.problem_selected_rolls["raid"] + 2
+
+
+def test_two_optimizations_use_or_and_empty_optimization_skips_half_loss():
+    first = EnvironmentCard(
+        "d0",
+        "Two Paths",
+        (
+            OptimizationRequirement("Impossible", {"Morphology": 99}),
+            OptimizationRequirement("Starter Path", {"Chemistry": 1}),
+        ),
+    )
+    no_optimization = EnvironmentCard("d0", "Pressure Only")
+    for environment in (first, no_optimization):
+        game = GameEngine(cards(), [environment, *disasters()[1:]], seed=11)
+        state = game.new_game()
+        force_first_disaster(game, state)
+        state.prosperity = 20
+        begin(game, state)
+        record = game.resolve_environment(state)
+        assert record.optimization_met is True
+        assert record.optimization_half_loss == 0
+        if environment is first:
+            assert record.optimization_results == (False, True)
+        else:
+            assert record.optimization_results == ()
+
+
+def test_unmet_requirements_use_fallback_effect_and_log_tier():
+    fallback = TraitCard(
+        "fallback",
+        "Fallback",
+        frozenset({"Morphology"}),
+        CardRole.ACTION,
+        {"Morphology": 3},
+        (ActionOption(prosperity=3),),
+        fallback_options=(ActionOption(prosperity=1),),
+    )
+    game = GameEngine(cards() + [fallback], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("fallback",))
+    game.play_card(state, "fallback", 0)
+    option = game.activate(state, 0)
+    assert option.prosperity == 1
+    assert state.current_round is not None
+    assert state.current_round.action_log[-1]["tier"] == "fallback"

@@ -27,8 +27,13 @@ class HumanPolicy:
         self.say("\n" + "=" * 68)
         self.say(
             f"ラウンド {context.round_number}/5  環境変化: {environment.name}  "
-            f"問題の出目 {context.problem_rolls}"
+            f"問題の実効出目 {context.problem_rolls}"
         )
+        for problem, raw in context.problem_raw_rolls.items():
+            selected = context.problem_selected_rolls[problem]
+            bonus = context.problem_modifiers[problem]
+            suffix = f" +{bonus}" if bonus else ""
+            self.say(f"  {problem}: {list(raw)} → {selected}{suffix} = {context.problem_rolls[problem]}")
         forecast = " / ".join(
             f"R{number}:{engine.disasters[item].name}"
             for number, item in enumerate(state.disaster_ids, start=1)
@@ -37,10 +42,15 @@ class HumanPolicy:
         self.say(
             f"繁栄 {state.prosperity}  手札 {len(state.hand)}/{engine.hand_limit}"
         )
-        self.say(
-            "最適化: " + environment.optimization.name + " [" +
-            self._requirements(environment.optimization.required_root_tags) + "]"
-        )
+        if environment.optimizations:
+            self.say("最適化（いずれか1つ）:")
+            for optimization in environment.optimizations:
+                self.say(
+                    "  " + optimization.name + " [" +
+                    self._requirements(optimization.required_root_tags) + "]"
+                )
+        else:
+            self.say("最適化なし（問題強化環境）")
 
         legal = engine.legal_sizes(state)
         self.say("\nサイズを選択:")
@@ -167,9 +177,16 @@ class HumanPolicy:
             top = column.top
             if top:
                 card = engine.traits[top.card_id]
-                for option_index, option in enumerate(card.options, start=1):
+                activation_tags = engine.activation_tags(state, column_index)
+                requirements_met = all(
+                    activation_tags[tag] >= amount
+                    for tag, amount in card.activation_requirements.items()
+                )
+                options = card.options if requirements_met else card.fallback_options
+                tier = "強効果" if requirements_met else "条件未達・弱効果"
+                for option_index, option in enumerate(options, start=1):
                     self.say(
-                        f"     起動{option_index}: {self._option_summary(option)} "
+                        f"     起動{option_index}（{tier}）: {self._option_summary(option)} "
                         f"条件[{self._requirements(card.activation_requirements)}]"
                     )
 
@@ -193,7 +210,10 @@ class HumanPolicy:
             f"条件[{self._requirements(card.activation_requirements)}]"
         )
         for option_index, option in enumerate(card.options, start=1):
-            self.say(f"     起動{option_index}: {self._option_summary(option)}")
+            self.say(f"     強効果{option_index}: {self._option_summary(option)}")
+        for option_index, option in enumerate(card.fallback_options, start=1):
+            self.say(f"     未達時{option_index}: {self._option_summary(option)}")
+        self.say(f"     題材: {card.source_taxon}")
         self.say(f"     {card.text}")
 
     def _show_help(self) -> None:
@@ -242,8 +262,8 @@ def main(argv: list[str] | None = None) -> int:
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.6 — 5ラウンド試作")
-    print("開始時に全5ラウンドの環境変化と最適化が公開されます。")
+    print("アリ進化ゲーム v0.7 — 5ラウンド試作")
+    print("開始時に全5ラウンドの環境と、複数最適化または問題強化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)
     print(

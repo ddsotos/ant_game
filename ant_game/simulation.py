@@ -1,4 +1,4 @@
-"""Paired-seed simulation and readable history output for v0.3."""
+"""Paired-seed diagnostic simulation utilities (not run for v0.7 delivery)."""
 
 from __future__ import annotations
 

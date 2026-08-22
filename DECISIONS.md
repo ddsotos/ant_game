@@ -392,3 +392,21 @@ Accepted by direct user request:
 Why:
 
 Movement described an outcome shared by many adaptations rather than an independent evolutionary basis, and overlapped heavily with the other roots. The UI changes expose information already present in the rules without adding a gameplay subsystem. The d4 change lowers the ceiling of three simultaneous exponential losses. Per the user's instruction, this build is delivered for human play without NPC simulation or a balance playtest, so none of these changes establishes `promising` status.
+
+## D-020 — v0.7: pair raid with sanitation and diversify environments
+
+Date: 2026-08-22
+
+Accepted by direct user request:
+
+- Remove nest damage completely and broaden fungal disease into `sanitation`, covering pathogens, parasites, infected wounds, decay, waste, and brood hygiene.
+- Keep the ordinary problem roll at 1d4, but allow optimization-free environments to alter dice or add a public modifier derived from that environment's ecology.
+- Expand the environment deck from five to eight and continue revealing five seed-selected cards. Existing environments offer two harder Optimization routes; three new environments have no Optimization and therefore no halving.
+- Give every existing card with a total activation requirement of four an explicit weak fallback that activates automatically while its strong condition is unmet.
+- Add ten source-backed ant traits, primarily reproductive adaptations. Player-facing names must use the form “ant name's adaptation” in Japanese; when no reliable Japanese common name exists, use a clearly documented game translation of at most five Japanese characters and keep the scientific name outside the title.
+
+Why:
+
+Raid and sanitation form a wider, more legible pair of acute external pressure and colony-internal health pressure. Multiple Optimization routes make a difficult environment less prescriptive, while optimization-free habitats trade long-term construction for immediately stronger routine problems. Weak fallbacks keep demanding cards usable without erasing the reward for completing their conditions. Environment and card effects must follow the represented ecology rather than receiving flavor after their numbers are chosen.
+
+This is a human-play baseline. No NPC simulation or balance playtest is authorized for this implementation, so it does not count toward `promising`.
