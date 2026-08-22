@@ -18,26 +18,27 @@ from urllib.parse import urlparse
 
 from .content import DISASTERS, TRAITS
 from .engine import PROBLEM_IDS, GameEngine, InvalidDecision
-from .localization_ja import CARD_TEXTS, EVENT_NAMES, ROLE_NAMES, card_name, event_name
+from .localization_ja import (
+    CARD_TEXTS,
+    EVENT_NAMES,
+    ROLE_NAMES,
+    SIZE_NAMES,
+    TAG_COLORS,
+    TAG_NAMES,
+    TAG_SYMBOLS,
+    card_name,
+    event_name,
+    optimization_name,
+)
 from .models import ActionOption, CardRole, EnvironmentCard, GameState, RoundPhase, Size, TraitCard
 
 STATIC_DIR = Path(__file__).with_name("web_static")
 TAG_INFO = {
-    "Morphology": ("形態", "#0072B2", "mandibles"),
-    "Chemistry": ("化学", "#E69F00", "droplet"),
-    "Sociality": ("社会性", "#009E73", "sociality"),
-    "Nesting": ("巣作り", "#CC79A7", "nest"),
-    "Resource Ecology": ("資源生態", "#F0E442", "leaf-seed"),
+    tag: (TAG_NAMES[tag], TAG_COLORS[tag], TAG_SYMBOLS[tag])
+    for tag in TAG_NAMES
 }
 PROBLEM_NAMES = {"raid": "襲撃", "sanitation": "衛生"}
-SIZE_LABELS = {"SMALL": "小型", "MEDIUM": "中型", "LARGE": "大型", "GIANT": "超大型"}
-OPTIMIZATION_LABELS = {
-    "flood": ("洪水：生体いかだ", "洪水：樹冠退避"),
-    "desert_heat_wave": ("砂漠熱波：銀毛放熱", "砂漠熱波：熱ショック応答"),
-    "prolonged_drought": ("長期乾燥：地下穀倉", "長期乾燥：貯蔵個体"),
-    "habitat_instability": ("居住地不安定化：定足数移住", "居住地不安定化：樹冠再建"),
-    "landmark_loss": ("目印消失：天空コンパス", "目印消失：フェロモン経路網"),
-}
+SIZE_LABELS = SIZE_NAMES
 
 
 @dataclass
@@ -81,7 +82,7 @@ class WebGameService:
             elif kind == "retain": engine.retain_cards(state, tuple(payload.get("card_ids", ())))
             elif kind == "play": engine.play_card(state, str(payload.get("card_id", "")), int(payload.get("column", -1)))
             elif kind == "support": engine.insert_support(state, str(payload.get("card_id", "")), int(payload.get("column", -1)))
-            elif kind == "activate": engine.activate(state, int(payload.get("column", -1)), int(payload.get("option", 0)))
+            elif kind == "activate": engine.activate(state, int(payload.get("column", -1)), int(payload.get("option", 0)), payload.get("target_card_id"))
             elif kind == "resolve":
                 engine.resolve_environment(state)
                 if not state.finished: engine.start_round(state)
@@ -106,6 +107,9 @@ class WebGameService:
         environment = engine.current_disaster(state)
         board_tags = engine.board_tags(state)
         optimization = self._optimization_data(environment, board_tags)
+        shields = self._shield_totals(context) if context else {}
+        round_base = context.prosperity_base if context else 0
+        round_multiplier = state.size.prosperity_multiplier
         return {
             "phase": state.phase.value, "finished": state.finished,
             "round": context.round_number if context else state.round_number,
@@ -113,11 +117,15 @@ class WebGameService:
             "size_name": SIZE_LABELS.get(state.size.name, state.size.name),
             "legal_sizes": [self._size_data(engine, size) for size in engine.legal_sizes(state)] if state.phase is RoundPhase.SIZE else [],
             "retention_limit": min(engine.retention_limit(state), engine.hand_limit - len(state.hand)) if context else 0,
-            "hand_limit": engine.hand_limit, "round_prosperity_base": context.prosperity_base if context else 0,
+            "hand_limit": engine.hand_limit,
+            "pending_retention_bonus": state.pending_retention_bonus,
+            "round_prosperity_base": round_base,
+            "round_prosperity_multiplier": round_multiplier,
+            "round_prosperity_delta": round_base * round_multiplier,
             "forecast": [self._forecast_data(engine, state, i) for i in range(len(state.disaster_ids))],
             "environment": {**self._environment_data(environment), "optimizations": optimization["optimizations"], "optimization_met": optimization["met"]},
             "optimizations": optimization["optimizations"],
-            "problems": [self._problem_data(problem, context) for problem in PROBLEM_IDS] if context else [],
+            "problems": [self._problem_data(problem, context, shields.get(problem, 0)) for problem in PROBLEM_IDS] if context else [],
             "candidates": [self._card_data(engine.traits[item.card_id], item.instance_id) for item in (context.candidate_instances if context else ())],
             "hand": [self._hand_card_data(engine, state, item) for item in state.hand],
             "columns": [self._column_data(engine, state, i) for i in range(len(state.columns))],
@@ -127,11 +135,31 @@ class WebGameService:
 
     def _optimization_data(self, environment: EnvironmentCard, board_tags: Mapping[str, int]) -> dict[str, Any]:
         result = []
+        labels = self._optimization_labels(environment)
         for index, item in enumerate(environment.optimizations):
             progress = self._requirements_data(item.required_root_tags, board_tags)
-            labels = OPTIMIZATION_LABELS.get(environment.id, ())
-            result.append({"name": labels[index] if index < len(labels) else item.name, "text": item.text, "source_taxon": item.source_taxon, "requirements": progress, "met": all(entry["missing"] == 0 for entry in progress)})
+            result.append({"name": labels[index], "text": item.text, "source_taxon": item.source_taxon, "requirements": progress, "met": all(entry["missing"] == 0 for entry in progress)})
         return {"optimizations": result, "met": not result or any(item["met"] for item in result)}
+
+    @staticmethod
+    def _optimization_labels(environment: EnvironmentCard) -> tuple[str, ...]:
+        """Return per-pattern Japanese names from the UI localization only."""
+
+        if not environment.optimizations:
+            return ()
+        localized = optimization_name(environment.id, "")
+        names = tuple(part.strip() for part in localized.split("／") if part.strip())
+        return tuple(
+            names[index] if index < len(names) else f"最適化{index + 1}"
+            for index in range(len(environment.optimizations))
+        )
+
+    @staticmethod
+    def _shield_totals(context: Any) -> dict[str, int]:
+        return {
+            problem: sum(shield.amount for shield in context.shields if shield.problem_id == problem)
+            for problem in PROBLEM_IDS
+        }
 
     def _hand_card_data(self, engine: GameEngine, state: GameState, instance: Any) -> dict[str, Any]:
         data = self._card_data(engine.traits[instance.card_id], instance.instance_id)
@@ -153,8 +181,8 @@ class WebGameService:
     @classmethod
     def _environment_data(cls, environment: EnvironmentCard) -> dict[str, Any]:
         localized = EVENT_NAMES.get(environment.id, (environment.name, environment.text))
-        labels = OPTIMIZATION_LABELS.get(environment.id, ())
-        optimizations = [{"name": labels[index] if index < len(labels) else item.name, "text": item.text, "source_taxon": item.source_taxon, "requirements": cls._requirements_data_static(item.required_root_tags)} for index, item in enumerate(environment.optimizations)]
+        labels = cls._optimization_labels(environment)
+        optimizations = [{"name": labels[index], "text": item.text, "source_taxon": item.source_taxon, "requirements": cls._requirements_data_static(item.required_root_tags)} for index, item in enumerate(environment.optimizations)]
         # ``optimization`` is retained as a read-only compatibility alias for
         # older debug clients; new clients must use ``optimizations``.
         legacy = optimizations[0] if optimizations else {"name": "最適化なし", "text": "", "requirements": []}
@@ -192,14 +220,16 @@ class WebGameService:
         cards = []
         for position, played in enumerate(column.cards):
             card = engine.traits[played.card_id]
-            cards.append({**self._card_data(card, played.instance_id), "top": position == len(column.cards) - 1, "support": played.is_support, "activated": bool(state.current_round and played.activated_round == state.current_round.round_number)})
+            cards.append({**self._card_data(card, played.instance_id), "top": position == len(column.cards) - 1, "support": played.is_support, "activated": bool(state.current_round and played.activated_round == state.current_round.round_number), "stored_count": len(played.stored_cards), "storage_income_per_card": played.storage_income_per_card, "storage_income_next_round": len(played.stored_cards) * played.storage_income_per_card})
         activations = []
         if column.top is not None and state.phase is RoundPhase.ACTIONS:
             top = column.top; card = engine.traits[top.card_id]; requirements = self._requirements_data(card.activation_requirements, activation_tags)
             already = top.activated_round == state.current_round.round_number; role_ok = card.role in (CardRole.ACTION, CardRole.STARTER); met = all(item["missing"] == 0 for item in requirements); options = card.options if met else card.fallback_options
             for option_index, option in enumerate(options):
-                enabled = role_ok and not already
-                activations.append({"option": option_index, "tier": "strong" if met else "fallback", "effect": self._option_data(option), "enabled": enabled, "reason": "" if enabled else ("このラウンドは起動済みです。" if already else "起動条件を満たしていません。"), "requirements": requirements})
+                has_target = bool(state.hand) if option.store_hand_card else True
+                enabled = role_ok and not already and has_target
+                reason = "" if enabled else ("このラウンドは起動済みです。" if already else "貯蔵する手札カードを選んでください。" if option.store_hand_card and not has_target else "起動条件を満たしていません。")
+                activations.append({"option": option_index, "tier": "strong" if met else "fallback", "effect": self._option_data(option), "enabled": enabled, "requires_storage_target": option.store_hand_card, "target_candidates": [item.instance_id for item in state.hand] if option.store_hand_card else [], "reason": reason, "requirements": requirements})
         return {"index": index, "name": f"進化列 {index + 1}", "cards": cards, "tags": [self._tag_data(tag, count) for tag, count in sorted(all_tags.items()) if tag in TAG_INFO], "activation_tags": [self._tag_data(tag, count) for tag, count in sorted(activation_tags.items()) if tag in TAG_INFO], "capacity": engine.column_capacity, "next_pushed": card_name(column.cards[0].card_id, column.cards[0].card_id) if len(column.cards) >= engine.column_capacity else None, "activations": activations}
 
     def _card_data(self, card: TraitCard, instance_id: str) -> dict[str, Any]:
@@ -207,12 +237,23 @@ class WebGameService:
 
     @staticmethod
     def _option_data(option: ActionOption) -> dict[str, Any]:
-        return {"text": option.text, "prosperity": option.prosperity, "draw_cards": option.draw_cards, "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in option.shields]}
+        return {
+            "text": option.text,
+            "prosperity": option.prosperity,
+            "draw_cards": option.draw_cards,
+            "retention_bonus": option.retention_bonus,
+            "store_hand_card": option.store_hand_card,
+            "storage_income_per_card": option.storage_income_per_card,
+            "tag_prosperity_cap": option.tag_prosperity_cap,
+            "tag_prosperity": [{"tag": tag, "name": TAG_NAMES.get(tag, tag), "coefficient": coefficient} for tag, coefficient in option.tag_prosperity],
+            "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in option.shields],
+        }
 
     @classmethod
     def _result_data(cls, engine: GameEngine, record: Any) -> dict[str, Any]:
         environment = engine.disasters[record.disaster_id]
-        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [cls._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "optimizations": [{"requirements": cls._requirements_data_static(req), "met": record.optimization_results[index]} for index, req in enumerate(record.optimization_requirements)], "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "total_prosperity": record.total_prosperity}
+        labels = cls._optimization_labels(environment)
+        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [cls._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "optimizations": [{"name": labels[index] if index < len(labels) else f"最適化{index + 1}", "requirements": cls._requirements_data_static(req), "met": record.optimization_results[index]} for index, req in enumerate(record.optimization_requirements)], "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "total_prosperity": record.total_prosperity}
 
     @classmethod
     def _problem_result(cls, record: Any, problem: str) -> dict[str, Any]:
@@ -232,7 +273,7 @@ def japanese_error(exc: Exception) -> str:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.7"
+    server_version = "AntGame/0.8"
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/config": self._json(SERVICE.config())

@@ -410,3 +410,23 @@ Why:
 Raid and sanitation form a wider, more legible pair of acute external pressure and colony-internal health pressure. Multiple Optimization routes make a difficult environment less prescriptive, while optimization-free habitats trade long-term construction for immediately stronger routine problems. Weak fallbacks keep demanding cards usable without erasing the reward for completing their conditions. Environment and card effects must follow the represented ecology rather than receiving flavor after their numbers are chosen.
 
 This is a human-play baseline. No NPC simulation or balance playtest is authorized for this implementation, so it does not count toward `promising`.
+
+## D-021 — v0.8: strengthen Payoffs and make storage a delayed reward
+
+Date: 2026-08-22
+
+Accepted by direct user request:
+
+- Change the size prosperity multipliers from 0/1/2/3 to 1/2/3/4, so a Small colony is not locked at zero prosperity, and start every round with five base prosperity.
+- Treat `prosperity=5` as the normal strong Payoff contribution. Unconditional Foundation and Bridge cards remain at 1–2 so that preparation still matters.
+- Give demanding Payoffs a biology-derived second benefit: a one-card draw, next-round retention, capped board-tag prosperity, or a strong typed shield.
+- Replace the strongest storage-themed draw effects on four cards with a choice to hide one hand card and gain one base prosperity per round from the following round onward.
+- Keep storage attached to its source card so pushing that card out also ends its income.
+- Use Japanese names directly on Optimization requirements; internal IDs remain English for deterministic APIs.
+- Use abstract patterns inspired by conditional activation, card tucking/caching, and icon-count rewards without copying any game's named cards or presentation.
+
+Why:
+
+The v0.7 baseline made many successful Payoffs feel numerically close to ordinary cards and made the first Small rounds scoreless. A strong conditional contribution creates a visible reason to build a column, while delayed storage converts a card into future prosperity at the cost of immediate flexibility. The cap on board-tag prosperity prevents a single dense tag from becoming an automatic choice.
+
+This is still a human-play implementation baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.

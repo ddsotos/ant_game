@@ -8,6 +8,7 @@ from ant_game.engine import PROBLEM_IDS
 from ant_game.models import (
     ActionCommand,
     ActionOption,
+    CardInstance,
     CardRole,
     EnvironmentCard,
     OptimizationRequirement,
@@ -108,6 +109,60 @@ def test_independent_problems_are_d4_and_seed_reproducible():
     assert first.round_number == second.round_number == 5
 
 
+def test_size_multipliers_have_a_nonzero_base_and_round_base_is_five():
+    assert [size.prosperity_multiplier for size in Size] == [1, 2, 3, 4]
+    game = engine()
+    state = game.new_game()
+    game.start_round(state)
+    assert state.current_round.prosperity_base == 5
+    game.choose_size(state, Size.SMALL)
+    assert state.current_round.prosperity_base == 5
+
+
+def test_retention_bonus_is_consumed_by_the_next_round_only():
+    bonus_card = TraitCard(
+        "retention", "Retention", frozenset({"Resource Ecology"}),
+        CardRole.ACTION, {}, (ActionOption(retention_bonus=2),),
+    )
+    game = GameEngine(cards() + [bonus_card], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("retention",))
+    game.play_card(state, "retention", 0)
+    game.activate(state, 0)
+    assert state.pending_retention_bonus == 2
+    game.resolve_environment(state)
+    game.start_round(state)
+    game.choose_size(state, Size.SMALL)
+    assert game.retention_limit(state) == 6
+    game.retain_cards(state, ())
+    assert state.pending_retention_bonus == 0
+    game.resolve_environment(state)
+    game.start_round(state)
+    game.choose_size(state, Size.SMALL)
+    assert game.retention_limit(state) == 4
+
+
+def test_storage_card_pays_from_next_round_and_is_discarded_with_host():
+    storage = TraitCard(
+        "storage", "Storage", frozenset({"Resource Ecology"}),
+        CardRole.ACTION, {}, (ActionOption(store_hand_card=True, storage_income_per_card=2),),
+    )
+    game = GameEngine(cards() + [storage], disasters(), seed=11, column_capacity=1)
+    state = game.new_game()
+    begin(game, state, retain=("storage", "f0"))
+    game.play_card(state, "storage", 0)
+    game.activate(state, 0, target_card_id="f0")
+    assert len(state.columns[0].top.stored_cards) == 1
+    game.resolve_environment(state)
+    game.start_round(state)
+    assert state.current_round.prosperity_base == 7
+    game.choose_size(state, Size.SMALL)
+    game.retain_cards(state, ())
+    state.hand.append(CardInstance("f1", "f1"))
+    game.play_card(state, "f1", 0)
+    assert any(item.card_id == "f0" for item in state.trait_discard)
+
+
 def test_at_least_five_environments_are_required():
     with pytest.raises(ValueError, match="at least five"):
         GameEngine(cards(), disasters()[:4])
@@ -133,7 +188,7 @@ def test_activation_excludes_top_cards_own_tags_but_counts_support_below_it():
 
     game.insert_support(state, "support", 1)
     game.activate(state, 1)
-    assert state.current_round.prosperity_base == 2
+    assert state.current_round.prosperity_base == 7
 
 
 def test_activation_requirements_do_not_use_other_columns():
@@ -154,7 +209,7 @@ def test_starters_remain_immediately_activatable_and_draw_is_immediate():
     game.activate(state, 0)
     assert len(state.hand) == before + 1
     assert state.columns[0].top.activated_round == 1
-    assert "retain_bonus" not in {item.name for item in fields(ActionOption)}
+    assert "retention_bonus" in {item.name for item in fields(ActionOption)}
 
 
 def test_resolve_order_is_prosperity_then_exponential_penalty_then_floor_half():
@@ -174,16 +229,16 @@ def test_resolve_order_is_prosperity_then_exponential_penalty_then_floor_half():
 
     record = game.resolve_environment(state)
 
-    assert record.prosperity_delta == 2
-    assert record.score_after_prosperity == 102
+    assert record.prosperity_delta == 14
+    assert record.score_after_prosperity == 114
     assert record.defense_by_problem == {"raid": 1, "sanitation": 0}
     assert record.unblocked_by_problem == {"raid": 2, "sanitation": 2}
     assert record.penalty_by_problem == {"raid": 4, "sanitation": 4}
     assert record.problem_penalty == 8
-    assert record.score_after_problems == 94
+    assert record.score_after_problems == 106
     assert record.optimization_met is False
-    assert record.optimization_half_loss == 47
-    assert record.total_prosperity == state.prosperity == 47
+    assert record.optimization_half_loss == 53
+    assert record.total_prosperity == state.prosperity == 53
 
 
 def test_fully_defended_problem_has_zero_penalty_and_shields_expire():

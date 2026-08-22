@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 from .content import DISASTERS, TRAITS
 from .engine import GameEngine, InvalidDecision
+from .localization_ja import ROLE_NAMES, TAG_NAMES, card_name, event_name
 from .models import GameState, Size
 
 
@@ -26,7 +27,7 @@ class HumanPolicy:
         environment = engine.current_disaster(state)
         self.say("\n" + "=" * 68)
         self.say(
-            f"ラウンド {context.round_number}/5  環境変化: {environment.name}  "
+            f"ラウンド {context.round_number}/5  環境変化: {event_name(environment.id, environment.name)}  "
             f"問題の実効出目 {context.problem_rolls}"
         )
         for problem, raw in context.problem_raw_rolls.items():
@@ -35,7 +36,7 @@ class HumanPolicy:
             suffix = f" +{bonus}" if bonus else ""
             self.say(f"  {problem}: {list(raw)} → {selected}{suffix} = {context.problem_rolls[problem]}")
         forecast = " / ".join(
-            f"R{number}:{engine.disasters[item].name}"
+            f"R{number}:{event_name(item, engine.disasters[item].name)}"
             for number, item in enumerate(state.disaster_ids, start=1)
         )
         self.say(f"予報: {forecast}")
@@ -196,7 +197,7 @@ class HumanPolicy:
         row = state.history[-1]
         self.say("\n前ラウンド結果:")
         self.say(
-            f"  R{row.round_number} {row.disaster_id} size={row.size.name}  "
+            f"  R{row.round_number} {event_name(row.disaster_id, row.disaster_id)} size={row.size.name}  "
             f"問題減点={row.problem_penalty} 最適化={'達成' if row.optimization_met else '未達'}  "
             f"繁栄=+{row.prosperity_delta}  total={row.total_prosperity}"
         )
@@ -205,8 +206,8 @@ class HumanPolicy:
 
     def _show_card(self, card, *, prefix: str) -> None:
         self.say(
-            f"{prefix}: {card.name}  {card.design_role}  "
-            f"tags[{', '.join(sorted(card.root_tags))}]  "
+            f"{prefix}: {card_name(card.id, card.name)}  {ROLE_NAMES.get(card.design_role, card.design_role)}  "
+            f"tags[{', '.join(TAG_NAMES.get(tag, tag) for tag in sorted(card.root_tags))}]  "
             f"条件[{self._requirements(card.activation_requirements)}]"
         )
         for option_index, option in enumerate(card.options, start=1):
@@ -228,20 +229,27 @@ class HumanPolicy:
     @staticmethod
     def _requirements(requirements) -> str:
         return ", ".join(
-            f"{tag} {amount}" for tag, amount in sorted(requirements.items())
+            f"{TAG_NAMES.get(tag, tag)} {amount}" for tag, amount in sorted(requirements.items())
         ) or "なし"
 
     @staticmethod
     def _option_summary(option) -> str:
         effects = []
         if option.prosperity:
-            effects.append(f"繁栄+{option.prosperity}")
+            effects.append(f"基礎繁栄+{option.prosperity}")
         for shield in option.shields:
             effects.append(
-                f"{shield.problem_id}シールド+{shield.amount}"
+                f"{('襲撃' if shield.problem_id == 'raid' else '衛生' if shield.problem_id == 'sanitation' else shield.problem_id)}シールド+{shield.amount}"
             )
         if option.draw_cards:
             effects.append(f"即時ドロー+{option.draw_cards}")
+        if option.retention_bonus:
+            effects.append(f"次ラウンド保持+{option.retention_bonus}")
+        for tag, coefficient in option.tag_prosperity:
+            effects.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに基礎繁栄+{coefficient}")
+        if getattr(option, "store_hand_card", False):
+            income = getattr(option, "storage_income_per_card", 0)
+            effects.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド基礎繁栄+{income}）")
         return " / ".join(effects) or "数値効果なし"
 
 
@@ -256,13 +264,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.list_disasters:
         for environment in DISASTERS:
-            print(f"{environment.id}: {environment.name}")
+            print(f"{environment.id}: {event_name(environment.id, environment.name)}")
         return 0
 
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.7 — 5ラウンド試作")
+    print("アリ進化ゲーム v0.8 — 5ラウンド試作")
     print("開始時に全5ラウンドの環境と、複数最適化または問題強化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)

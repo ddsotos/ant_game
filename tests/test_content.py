@@ -70,12 +70,11 @@ def test_four_tag_cards_have_weak_fallbacks() -> None:
     cards = {card.id: card for card in TRAITS}
     assert all(sum(cards[card_id].activation_requirements.values()) == 4 for card_id in FOUR_TAG_CARDS)
     assert all(cards[card_id].fallback_options for card_id in FOUR_TAG_CARDS)
-    assert all(not card.fallback_options for card in TRAITS if card.id not in FOUR_TAG_CARDS)
 
 
 def test_draws_are_few_and_gated() -> None:
     draw_cards = [card for card in TRAITS if any(option.draw_cards for option in card.options)]
-    assert len(draw_cards) == 8
+    assert len(draw_cards) == 4
     assert all(card.activation_requirements for card in draw_cards)
 
 
@@ -132,3 +131,29 @@ def test_storage_cards_do_not_grant_shields() -> None:
     storage_ids = {"myrmecocystus_reserve", "pogonomyrmex_granary", "solenopsis_dry_store", "atta_leaf_cache"}
     cards = {card.id: card for card in TRAITS}
     assert all(not any(option.shields for option in cards[card_id].options) for card_id in storage_ids)
+    assert all(
+        any(getattr(option, "store_hand_card", False) and getattr(option, "storage_income_per_card", 0) == 1 for option in cards[card_id].options)
+        for card_id in storage_ids
+    )
+
+
+def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> None:
+    cards = {card.id: card for card in TRAITS}
+    strong_payoffs = {
+        "cephalotes_living_gate", "pheidole_supermajor_program", "megaponera_field_medicine",
+        "colobopsis_last_defense", "acromyrmex_antibiotic_garden", "pheidole_raid_wall",
+        "oecophylla_living_chain", "cataglyphis_sky_compass", "diacamma_gemma_inheritance",
+        "ooceraea_synchronized_brood", "mycocepurus_clonal_garden", "cardiocondyla_dual_males",
+        "pristomyrmex_worker_queens",
+    }
+    assert all(max(option.prosperity for option in cards[card_id].options) >= 5 for card_id in strong_payoffs)
+    assert cards["pheidole_seed_miller"].options[0].tag_prosperity
+    assert cards["mycocepurus_clonal_garden"].options[0].tag_prosperity
+    assert cards["diacamma_gemma_inheritance"].options[0].retention_bonus == 1
+
+
+def test_optimization_names_are_player_facing_japanese() -> None:
+    assert all(
+        all(requirement.name and not any(char.isascii() and char.isalpha() for char in requirement.name) for requirement in environment.optimizations)
+        for environment in DISASTERS
+    )

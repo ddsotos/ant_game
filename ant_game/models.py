@@ -15,7 +15,9 @@ class Size(IntEnum):
 
     @property
     def prosperity_multiplier(self) -> int:
-        return int(self)
+        # Even a small colony has a viable baseline.  Size then adds one
+        # multiplier step at a time: 1/2/3/4 rather than 0/1/2/3.
+        return int(self) + 1
 
     @property
     def retention(self) -> int:
@@ -58,7 +60,28 @@ class ActionOption:
     prosperity: int = 0
     shields: tuple[ShieldSpec, ...] = ()
     draw_cards: int = 0
+    # A temporary hand-building effect.  It is added to the next round's
+    # retention only, then consumed when that retention choice is made.
+    retention_bonus: int = 0
+    store_hand_card: bool = False
+    storage_income_per_card: int = 0
+    # (root tag, prosperity per board copy).  This keeps tag-scaled rewards a
+    # data-defined option instead of adding card-specific effect types.
+    tag_prosperity: tuple[tuple[str, int], ...] = ()
+    # Prevent a broad board from turning a conditional effect into runaway
+    # scoring.  Zero means no tag-scaled prosperity, not unlimited.
+    tag_prosperity_cap: int = 2
     text: str = ""
+
+    def __post_init__(self) -> None:
+        if self.prosperity < 0 or self.draw_cards < 0 or self.retention_bonus < 0 or self.tag_prosperity_cap < 0:
+            raise ValueError("action option amounts must not be negative")
+        if self.storage_income_per_card < 0:
+            raise ValueError("storage income must not be negative")
+        if self.store_hand_card and self.storage_income_per_card <= 0:
+            raise ValueError("a storage effect must have positive income")
+        if any(not tag or coefficient < 0 for tag, coefficient in self.tag_prosperity):
+            raise ValueError("tag prosperity entries must use non-negative coefficients")
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,6 +183,8 @@ class PlayedCard:
     card_id: str
     is_support: bool = False
     activated_round: int | None = None
+    stored_cards: list[CardInstance] = field(default_factory=list)
+    storage_income_per_card: int = 0
 
 
 @dataclass(slots=True)
@@ -197,6 +222,7 @@ class ActionCommand:
     column_index: int | None = None
     card_id: str | None = None
     option_index: int = 0
+    target_card_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,6 +271,9 @@ class GameState:
     round_number: int = 0
     size: Size = Size.SMALL
     prosperity: int = 0
+    # Set by an action in the current round and consumed by the next
+    # retain_cards call.  It never carries beyond that one retention step.
+    pending_retention_bonus: int = 0
     hand: list[CardInstance] = field(default_factory=list)
     columns: list[ColumnState] = field(default_factory=list)
     disaster_ids: tuple[str, ...] = ()

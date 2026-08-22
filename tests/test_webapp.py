@@ -8,7 +8,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 from ant_game.engine import PROBLEM_IDS, InvalidDecision
-from ant_game.models import PlayedCard
+from ant_game.models import PlayedCard, ShieldSpec
 from ant_game.webapp import RequestHandler, WebGameService
 
 
@@ -32,7 +32,7 @@ def test_service_exposes_five_tags_and_environment_forecast_without_problem_clas
 def test_sociality_has_japanese_name_and_dedicated_symbol():
     sociality = next(tag for tag in WebGameService().config()["tags"] if tag["id"] == "Sociality")
     assert sociality["name"] == "\u793e\u4f1a\u6027"
-    assert sociality["symbol"] == "sociality"
+    assert sociality["symbol"] == "linked-ants"
     assert sociality["color"]
 
 
@@ -52,6 +52,21 @@ def test_problem_rolls_and_shields_are_projected_independently():
     for problem in result["problems"]:
         assert problem["unblocked"] == max(0, problem["roll"] - problem["defense"])
         assert problem["penalty"] == (0 if problem["unblocked"] == 0 else 2 ** problem["unblocked"])
+
+
+def test_live_projection_includes_activated_shields_and_round_prosperity_delta():
+    service = WebGameService()
+    opened = service.new_game(seed=4)
+    game_id = opened["game_id"]
+    session = service.sessions[game_id]
+    session.state.current_round.shields.append(ShieldSpec("raid", 2))
+    state = service.get(game_id)["state"]
+    raid = next(problem for problem in state["problems"] if problem["id"] == "raid")
+    assert raid["shield"] == 2
+    assert raid["unblocked"] == max(0, raid["roll"] - 2)
+    assert state["round_prosperity_base"] == 5
+    assert state["round_prosperity_delta"] == 5
+    assert state["round_prosperity_multiplier"] == 1
 
 
 def test_retention_projection_keeps_existing_hand_visible():
@@ -128,7 +143,7 @@ def test_card_effects_and_conditions_are_structured_data():
     for candidate in state["candidates"]:
         assert isinstance(candidate["options"], list)
         for option in candidate["options"]:
-            assert {"text", "prosperity", "draw_cards", "shields"} <= set(option)
+            assert {"text", "prosperity", "draw_cards", "shields", "retention_bonus", "store_hand_card", "storage_income_per_card", "tag_prosperity"} <= set(option)
 
 
 def test_real_http_server_serves_v05_page_and_rejects_non_object_json():
@@ -140,7 +155,7 @@ def test_real_http_server_serves_v05_page_and_rejects_non_object_json():
         with urlopen(base + "/", timeout=2) as response:
             page = response.read().decode("utf-8")
             assert 'lang="ja"' in page
-            assert "symbol-sociality" in page
+            assert "symbol-linked-ants" in page
             assert 'id="environment"' not in page
         with urlopen(base + "/style.css", timeout=2) as response:
             css = response.read().decode("utf-8")

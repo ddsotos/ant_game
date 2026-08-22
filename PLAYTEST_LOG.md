@@ -994,3 +994,25 @@ This iteration is to receive rule tests, content invariant tests, browser API te
 ### Status
 
 This iteration does not count toward the three stable reviews required for `promising`. Quantitative results and representative decisions are intentionally absent until the player evaluates the browser build.
+
+## v0.8 Human-play implementation baseline — stronger Payoffs and delayed storage
+
+### Rules/content changes
+
+- Size multipliers are Small 1, Medium 2, Large 3, Giant 4, removing the zero-score Small multiplier.
+- Conditional Payoff prosperity is generally 5, while unconditional Foundation and Bridge prosperity remains 1–2.
+- Strong Payoffs now pair prosperity with biology-derived benefits such as a typed shield, one-card draw, next-round retention, or capped board-tag prosperity.
+- Four storage adaptations—ミツツボアリの生体貯蔵、収穫アリの地下穀倉、ヒアリの乾燥貯蔵、ハキリアリの葉片仮置場—hide one hand card and produce one base prosperity per round from the following round onward.
+- Optimization requirement names are Japanese in the data itself, not only in a UI alias.
+
+### Verification boundary
+
+Only content/model/UI integration tests, Python compilation, JavaScript syntax checks, and documentation checks are authorized for this iteration. NPC strategy batches, simulation statistics, representative-game analysis, and human playtest were not run.
+
+### Quantitative results
+
+Not applicable: this is a requested content/rules implementation, not a balance iteration.
+
+### Design status
+
+The stronger Payoff numbers and delayed storage are hypotheses. The next human session should specifically compare taking an immediate +5 Payoff against keeping the card needed for a future storage income, and check whether board-tag bonuses remain attractive without becoming automatic.
