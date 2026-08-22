@@ -914,3 +914,42 @@ The engine, content, and browser work were independently implemented/reviewed by
 This iteration does not count toward the three stable reviews required for `promising`. There is not yet a representative human decision log. In particular, the severity of `2^n`, the attainability of five public Optimization targets, and the usefulness of Small versus Giant remain open questions.
 
 Next test: the player completes several seeds in the Japanese browser and records specific moments where prosperity, shield activation, size, placement, and future Optimization offered competing choices. Select at most one to three changes from that evidence.
+
+## v0.5 Human-play baseline — environmental changes and three recurring problems
+
+### Authorized rules
+
+- Merge Cooperation and Caste into Sociality, producing six root tags.
+- Forecast five long-term environmental changes, each carrying an Optimization but no problem type.
+- Every round, independently roll raid, fungal disease, and nest damage on 1d6 and apply matching temporary shields.
+- Keep `2^n` per unblocked problem, sum the losses, floor at zero, then halve the remainder if the environmental Optimization is unmet.
+- Make storage a conditional-draw theme; move heat-shock response into the heat-wave Optimization.
+- Keep draw scarce and gated, provide more unconditional actions, and gate strong shields behind heavier conditions.
+
+### Content audit
+
+- 33 playable cards: three unconditional starters and thirty normal cards.
+- Six draw cards, all with non-empty activation requirements.
+- Sixteen normal cards have no activation condition.
+- Ordinary shield-1 cards are mostly unconditional.
+- Seven cards provide shield 3; every one has a substantial activation condition.
+- No playable card uses old Cooperation/Caste tags or heat/drought shields.
+- Five environmental changes use real-ant adaptations: combined flood response, silver-hair plus heat-shock protection, underground granary, emergency emigration, and sky-compass navigation.
+
+### Engineering evidence
+
+- 38 automated tests passed.
+- Tests cover deterministic five-environment ordering, three deterministic problem dice per round, typed shield application, exponential losses, zero floor, Optimization halving, top-card self-tag exclusion, six-tag content invariants, draw/shield gating, Japanese browser data, and complete five-round browser-service play.
+- JavaScript syntax and Python compilation succeeded.
+- CLI and diagnostic strategies were migrated to the problem schema, but no multi-game balance simulation was run.
+
+### Luna findings and Sol decision
+
+- systems/simplicity recommended exactly three problems—raid, fungal, nest damage—rather than restoring heat or drought as a fourth shield category.
+- ant taxonomy recommended five habitat-scale environmental changes and the Sociality merge.
+- Both reviews warned that three simultaneous dice make the retained exponential penalty much harsher.
+- Sol retained the user-requested dice and existing exponent for this first playable comparison instead of changing two structural dimensions at once.
+
+### Status and next test
+
+This iteration does not count toward `promising`. The next evidence must come from human play. Record whether scores repeatedly return to zero, whether the player can meaningfully choose among three defenses, whether gated draw remains attractive without becoming automatic, and whether the five Optimizations suggest different builds.

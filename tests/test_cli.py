@@ -41,4 +41,4 @@ def test_human_policy_done_leaves_action_phase_cleanly() -> None:
 
 def test_disaster_list_is_available_without_starting_a_game(capsys) -> None:
     assert main(["--list-disasters"]) == 0
-    assert "flood_torrent" in capsys.readouterr().out
+    assert "flood" in capsys.readouterr().out

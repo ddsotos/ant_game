@@ -1,4 +1,4 @@
-"""日本語ブラウザUIを提供する、依存ライブラリ不要のHTTPサーバー。"""
+"""Minimal Japanese browser UI for the five-round ant adaptation game."""
 
 from __future__ import annotations
 
@@ -15,16 +15,29 @@ from typing import Any, Mapping
 from urllib.parse import urlparse
 
 from .content import DISASTERS, TRAITS
-from .engine import GameEngine, InvalidDecision
+from .engine import PROBLEM_IDS, GameEngine, InvalidDecision
 from .localization_ja import (
-    CARD_TEXTS, EVENT_NAMES, HAZARD_NAMES, ROLE_NAMES, SIZE_NAMES,
-    TAG_COLORS, TAG_NAMES, TAG_SYMBOLS, card_name, event_name,
-    optimization_name, option_text,
+    CARD_TEXTS,
+    EVENT_NAMES,
+    ROLE_NAMES,
+    card_name,
+    event_name,
+    optimization_name,
 )
-from .models import CardRole, GameState, RoundPhase, Size, TraitCard
-
+from .models import ActionOption, CardRole, EnvironmentCard, GameState, RoundPhase, Size, TraitCard
 
 STATIC_DIR = Path(__file__).with_name("web_static")
+
+TAG_INFO: dict[str, tuple[str, str, str]] = {
+    "Morphology": ("形態", "#0072B2", "mandibles"),
+    "Chemistry": ("化学", "#E69F00", "droplet"),
+    "Sociality": ("社会性", "#009E73", "sociality"),
+    "Nesting": ("巣作り", "#CC79A7", "nest"),
+    "Movement": ("移動", "#56B4E9", "route"),
+    "Resource Ecology": ("資源生態", "#F0E442", "leaf-seed"),
+}
+PROBLEM_NAMES = {"raid": "襲撃", "fungal": "菌害", "nest_damage": "巣の損傷"}
+SIZE_LABELS = {"SMALL": "小", "MEDIUM": "中", "LARGE": "大", "GIANT": "巨大"}
 
 
 @dataclass
@@ -34,7 +47,7 @@ class Session:
 
 
 class WebGameService:
-    """状態をブラウザ向けJSONへ射影する、テスト可能な操作層。"""
+    """Thread-safe, JSON-shaped adapter around the rules engine."""
 
     def __init__(self) -> None:
         self.sessions: dict[str, Session] = {}
@@ -42,8 +55,9 @@ class WebGameService:
 
     def config(self) -> dict[str, Any]:
         return {
-            "tags": [self._tag_data(tag) for tag in TAG_NAMES],
-            "disasters": [self._disaster_data(disaster) for disaster in DISASTERS],
+            "tags": [self._tag_data(tag) for tag in TAG_INFO],
+            "environments": [self._environment_data(environment) for environment in DISASTERS],
+            "problems": [self._problem_data(problem) for problem in PROBLEM_IDS],
         }
 
     def new_game(self, seed: int = 0) -> dict[str, Any]:
@@ -95,112 +109,85 @@ class WebGameService:
 
     def project(self, engine: GameEngine, state: GameState) -> dict[str, Any]:
         context = state.current_round
-        disaster = engine.current_disaster(state)
+        environment = engine.current_disaster(state)
         last = state.history[-1] if state.history else None
         board_tags = engine.board_tags(state)
-        shields = {
-            hazard: sum(item.amount for item in context.shields if item.hazard_tag == hazard)
-            for hazard in sorted(disaster.hazard_tags)
-        } if context else {}
-        optimization_progress = self._requirements_data(
-            disaster.optimization.required_root_tags, board_tags
-        )
+        shields = self._shield_totals(context.shields if context else ())
+        optimization_progress = self._requirements_data(environment.optimization.required_root_tags, board_tags)
         return {
             "phase": state.phase.value,
             "finished": state.finished,
             "round": context.round_number if context else state.round_number,
             "prosperity": state.prosperity,
             "size": state.size.name.lower(),
-            "size_name": SIZE_NAMES[state.size.name],
-            "legal_sizes": [self._size_data(engine, size) for size in engine.legal_sizes(state)]
-            if state.phase is RoundPhase.SIZE else [],
-            "retention_limit": min(
-                engine.retention_limit(state), engine.hand_limit - len(state.hand)
-            ) if context else 0,
+            "size_name": SIZE_LABELS.get(state.size.name, state.size.name),
+            "legal_sizes": [self._size_data(engine, size) for size in engine.legal_sizes(state)] if state.phase is RoundPhase.SIZE else [],
+            "retention_limit": min(engine.retention_limit(state), engine.hand_limit - len(state.hand)) if context else 0,
             "hand_limit": engine.hand_limit,
             "round_prosperity_base": context.prosperity_base if context else 0,
             "forecast": [self._forecast_data(engine, state, index) for index in range(len(state.disaster_ids))],
-            "disaster": {
-                **self._disaster_data(disaster),
-                "hazards": [
-                    {
-                        "id": hazard,
-                        "name": HAZARD_NAMES.get(hazard, hazard),
-                        "roll": context.hazard_rolls.get(hazard) if context else None,
-                        "shield": shields.get(hazard, 0),
-                    }
-                    for hazard in sorted(disaster.hazard_tags)
-                ],
+            "environment": {
+                **self._environment_data(environment),
                 "optimization": {
-                    "name": optimization_name(disaster.id, disaster.optimization.name),
-                    "text": disaster.optimization.text,
+                    "name": optimization_name(environment.id, environment.optimization.name),
+                    "text": environment.optimization.text,
                     "requirements": optimization_progress,
-                    "met": all(item["missing"] == 0 for item in optimization_progress),
+                    "met": bool(optimization_progress) and all(item["missing"] == 0 for item in optimization_progress),
                 },
             },
-            "candidates": [
-                self._card_data(engine.traits[item.card_id], item.instance_id)
-                for item in (context.candidate_instances if context else ())
-            ],
+            "problems": [self._problem_data(problem, context.problem_rolls.get(problem), shields.get(problem, 0)) for problem in PROBLEM_IDS] if context else [],
+            "candidates": [self._card_data(engine.traits[item.card_id], item.instance_id) for item in (context.candidate_instances if context else ())],
             "hand": [self._card_data(engine.traits[item.card_id], item.instance_id) for item in state.hand],
             "columns": [self._column_data(engine, state, index) for index in range(len(state.columns))],
             "last_result": None if last is None else self._result_data(engine, last),
         }
 
     def _forecast_data(self, engine: GameEngine, state: GameState, index: int) -> dict[str, Any]:
-        disaster = engine.disasters[state.disaster_ids[index]]
-        return {
-            **self._disaster_data(disaster),
-            "round": index + 1,
-            "current": not state.finished and index == state.round_number,
-            "completed": index < state.round_number,
-        }
+        environment = engine.disasters[state.disaster_ids[index]]
+        return {**self._environment_data(environment), "round": index + 1, "current": not state.finished and index == state.round_number, "completed": index < state.round_number}
 
-    def _disaster_data(self, disaster: Any) -> dict[str, Any]:
+    @staticmethod
+    def _environment_data(environment: EnvironmentCard) -> dict[str, Any]:
+        localized = EVENT_NAMES.get(environment.id, (environment.name, environment.text))
         return {
-            "id": disaster.id,
-            "name": event_name(disaster.id, disaster.name),
-            "text": EVENT_NAMES.get(disaster.id, (disaster.name, disaster.text))[1],
-            "hazard_tags": [
-                {"id": tag, "name": HAZARD_NAMES.get(tag, tag)} for tag in sorted(disaster.hazard_tags)
-            ],
-            "optimization": {
-                "name": optimization_name(disaster.id, disaster.optimization.name),
-                "requirements": self._requirements_data(disaster.optimization.required_root_tags),
-            },
+            "id": environment.id,
+            "name": localized[0] or environment.name,
+            "text": localized[1] or environment.text,
+            "optimization": {"name": optimization_name(environment.id, environment.optimization.name), "requirements": WebGameService._requirements_data_static(environment.optimization.required_root_tags)},
         }
 
     @staticmethod
+    def _problem_data(problem: str, roll: int | None = None, shield: int = 0) -> dict[str, Any]:
+        unblocked = None if roll is None else max(0, roll - shield)
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
+
+    @staticmethod
+    def _shield_totals(shields: Any) -> dict[str, int]:
+        totals = {problem: 0 for problem in PROBLEM_IDS}
+        for shield in shields:
+            problem = getattr(shield, "problem_id", "")
+            if problem in totals:
+                totals[problem] += shield.amount
+        return totals
+
+    @staticmethod
     def _tag_data(tag: str, count: int | None = None) -> dict[str, Any]:
-        data: dict[str, Any] = {
-            "id": tag,
-            "name": TAG_NAMES.get(tag, tag),
-            "color": TAG_COLORS.get(tag, "#777777"),
-            "symbol": TAG_SYMBOLS.get(tag, "dot"),
-        }
+        name, color, symbol = TAG_INFO.get(tag, (tag, "#777777", "dot"))
+        data: dict[str, Any] = {"id": tag, "name": name, "color": color, "symbol": symbol}
         if count is not None:
             data["count"] = count
         return data
 
-    def _requirements_data(
-        self, requirements: Mapping[str, int], actual: Mapping[str, int] | None = None
-    ) -> list[dict[str, Any]]:
-        return [
-            {
-                **self._tag_data(tag),
-                "required": required,
-                "actual": actual.get(tag, 0) if actual is not None else None,
-                "missing": max(0, required - actual.get(tag, 0)) if actual is not None else None,
-            }
-            for tag, required in sorted(requirements.items())
-        ]
+    @classmethod
+    def _requirements_data_static(cls, requirements: Mapping[str, int], actual: Mapping[str, int] | None = None) -> list[dict[str, Any]]:
+        return [{**cls._tag_data(tag), "required": required, "actual": actual.get(tag, 0) if actual is not None else None, "missing": max(0, required - actual.get(tag, 0)) if actual is not None else None} for tag, required in sorted(requirements.items())]
+
+    def _requirements_data(self, requirements: Mapping[str, int], actual: Mapping[str, int] | None = None) -> list[dict[str, Any]]:
+        return self._requirements_data_static(requirements, actual)
 
     @staticmethod
     def _size_data(engine: GameEngine, size: Size) -> dict[str, Any]:
-        return {
-            "id": size.name.lower(), "name": SIZE_NAMES[size.name],
-            "multiplier": size.prosperity_multiplier, "retention": engine.retention_curve[size],
-        }
+        return {"id": size.name.lower(), "name": SIZE_LABELS.get(size.name, size.name), "multiplier": size.prosperity_multiplier, "retention": engine.retention_curve[size]}
 
     def _column_data(self, engine: GameEngine, state: GameState, index: int) -> dict[str, Any]:
         column = state.columns[index]
@@ -209,12 +196,7 @@ class WebGameService:
         cards = []
         for position, played in enumerate(column.cards):
             card = engine.traits[played.card_id]
-            cards.append({
-                **self._card_data(card, played.instance_id),
-                "top": position == len(column.cards) - 1,
-                "support": played.is_support,
-                "activated": bool(state.current_round and played.activated_round == state.current_round.round_number),
-            })
+            cards.append({**self._card_data(card, played.instance_id), "top": position == len(column.cards) - 1, "support": played.is_support, "activated": bool(state.current_round and played.activated_round == state.current_round.round_number)})
         activations: list[dict[str, Any]] = []
         if column.top is not None and state.phase is RoundPhase.ACTIONS:
             top = column.top
@@ -225,73 +207,30 @@ class WebGameService:
             requirements_ok = all(item["missing"] == 0 for item in requirements)
             for option_index, option in enumerate(card.options):
                 enabled = role_ok and requirements_ok and not already
-                activations.append({
-                    "option": option_index, "text": option_text(option), "enabled": enabled,
-                    "reason": "" if enabled else (
-                        "このラウンドは起動済みです" if already else
-                        "下層・支援カードのタグが不足しています" if not requirements_ok else
-                        "このカードは起動できません"
-                    ),
-                    "requirements": requirements,
-                })
-        return {
-            "index": index, "name": f"進化列 {index + 1}", "cards": cards,
-            "tags": [self._tag_data(tag, count) for tag, count in sorted(all_tags.items())],
-            "activation_tags": [self._tag_data(tag, count) for tag, count in sorted(activation_tags.items())],
-            "capacity": engine.column_capacity,
-            "next_pushed": card_name(column.cards[0].card_id, column.cards[0].card_id)
-            if len(column.cards) >= engine.column_capacity else None,
-            "activations": activations,
-        }
+                activations.append({"option": option_index, "effect": self._option_data(option), "enabled": enabled, "reason": "" if enabled else ("このラウンドは起動済みです。" if already else "起動条件を満たしていません。"), "requirements": requirements})
+        return {"index": index, "name": f"進化列 {index + 1}", "cards": cards, "tags": [self._tag_data(tag, count) for tag, count in sorted(all_tags.items()) if tag in TAG_INFO], "activation_tags": [self._tag_data(tag, count) for tag, count in sorted(activation_tags.items()) if tag in TAG_INFO], "capacity": engine.column_capacity, "next_pushed": card_name(column.cards[0].card_id, column.cards[0].card_id) if len(column.cards) >= engine.column_capacity else None, "activations": activations}
 
     def _card_data(self, card: TraitCard, instance_id: str) -> dict[str, Any]:
-        return {
-            "id": instance_id, "card_id": card.id,
-            "name": card_name(card.id, card.name),
-            "text": CARD_TEXTS.get(card.id, card.text),
-            "tags": [self._tag_data(tag) for tag in sorted(card.root_tags)],
-            "requirements": self._requirements_data(card.activation_requirements),
-            "role": ROLE_NAMES.get(card.design_role, card.design_role),
-            "options": [option_text(option) for option in card.options],
-        }
+        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "tags": [self._tag_data(tag) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": ROLE_NAMES.get(card.design_role, card.design_role), "options": [self._option_data(option) for option in card.options]}
 
-    def _result_data(self, engine: GameEngine, record: Any) -> dict[str, Any]:
-        disaster = engine.disasters[record.disaster_id]
-        return {
-            "round": record.round_number, "disaster_name": event_name(disaster.id, disaster.name),
-            "score_before": record.score_before, "prosperity_base": record.prosperity_base,
-            "size_multiplier": record.size.prosperity_multiplier,
-            "prosperity_delta": record.prosperity_delta,
-            "score_after_prosperity": record.score_after_prosperity,
-            "hazards": [
-                {
-                    "id": hazard, "name": HAZARD_NAMES.get(hazard, hazard),
-                    "roll": record.hazard_rolls[hazard], "defense": record.defense_by_hazard[hazard],
-                    "unblocked": record.unblocked_by_hazard[hazard], "penalty": record.penalty_by_hazard[hazard],
-                }
-                for hazard in sorted(record.hazard_rolls)
-            ],
-            "hazard_penalty": record.hazard_penalty,
-            "score_after_hazard": record.score_after_hazard,
-            "optimization_name": optimization_name(disaster.id, disaster.optimization.name),
-            "optimization_met": record.optimization_met,
-            "optimization_half_loss": record.optimization_half_loss,
-            "total_prosperity": record.total_prosperity,
-        }
+    @staticmethod
+    def _option_data(option: ActionOption) -> dict[str, Any]:
+        return {"text": "", "prosperity": option.prosperity, "draw_cards": option.draw_cards, "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in option.shields]}
+
+    @staticmethod
+    def _result_data(engine: GameEngine, record: Any) -> dict[str, Any]:
+        environment = engine.disasters[record.disaster_id]
+        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [WebGameService._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "optimization_name": optimization_name(environment.id, environment.optimization.name), "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "total_prosperity": record.total_prosperity}
+
+    @staticmethod
+    def _problem_result(record: Any, problem: str) -> dict[str, Any]:
+        roll = record.problem_rolls[problem]
+        unblocked = record.unblocked_by_problem[problem]
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
 
 
 SERVICE = WebGameService()
-
-ERROR_TRANSLATIONS = {
-    "operation requires phase": "今のフェーズではその操作はできません。",
-    "column index is out of range": "進化列の指定が正しくありません。",
-    "card is not in hand": "そのカードは手札にありません。",
-    "a physical card may activate only once": "同じカードは1ラウンドに1回だけ起動できます。",
-    "activation requirements": "下層・支援カードの起動条件を満たしていません。",
-    "other cards in the column": "下層・支援カードの起動条件を満たしていません。",
-    "retained cards exceed": "保持できる枚数を超えています。",
-    "retained cards must": "公開されていないカードは保持できません。",
-}
+ERROR_TRANSLATIONS = {"operation requires phase": "今のフェーズではその操作はできません。", "column index is out of range": "進化列の指定が正しくありません。", "card is not in hand": "そのカードは手札にありません。", "a physical card may activate only once": "同じカードは1ラウンドに1回だけ起動できます。", "activation requirements": "起動条件を満たしていません。", "other cards in the column": "列の条件を満たしていません。", "retained cards exceed": "保持できる枚数を超えています。", "retained cards must": "公開されているカードだけ保持できます。"}
 
 
 def japanese_error(exc: Exception) -> str:
@@ -299,11 +238,11 @@ def japanese_error(exc: Exception) -> str:
     for fragment, translated in ERROR_TRANSLATIONS.items():
         if fragment in message:
             return translated
-    return message if any("ぁ" <= char <= "龥" for char in message) else "操作を実行できませんでした。"
+    return message if any("\u3040" <= char <= "\u9fff" for char in message) else "操作を実行できませんでした。"
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.4"
+    server_version = "AntGame/0.5"
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
@@ -321,11 +260,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             payload = self._body()
             if self.path == "/api/new": result = SERVICE.new_game(payload.get("seed", 0))
             elif self.path == "/api/action": result = SERVICE.act(str(payload.get("game_id", "")), str(payload.get("kind", "")), payload)
-            else:
-                self.send_error(HTTPStatus.NOT_FOUND); return
+            else: self.send_error(HTTPStatus.NOT_FOUND); return
             self._json(result)
-        except (InvalidDecision, ValueError, TypeError, json.JSONDecodeError) as exc:
-            self._json({"error": japanese_error(exc)}, HTTPStatus.BAD_REQUEST)
+        except (InvalidDecision, ValueError, TypeError, json.JSONDecodeError) as exc: self._json({"error": japanese_error(exc)}, HTTPStatus.BAD_REQUEST)
 
     def _body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
@@ -336,24 +273,18 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def _json(self, data: Any, status: HTTPStatus = HTTPStatus.OK) -> None:
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        self.send_response(status); self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+        self.send_response(status); self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
 
     def _static(self, filename: str, content_type: str) -> None:
         body = (STATIC_DIR / filename).read_bytes()
-        self.send_response(HTTPStatus.OK); self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+        self.send_response(HTTPStatus.OK); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
 
     def log_message(self, format: str, *args: Any) -> None: return
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", default="127.0.0.1"); parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--no-browser", action="store_true"); args = parser.parse_args(argv)
-    server = ThreadingHTTPServer((args.host, args.port), RequestHandler)
-    url = f"http://{args.host}:{args.port}/"; print(f"アリ進化ゲームを起動しました: {url}")
-    print("終了するには Ctrl+C を押してください。")
+    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--host", default="127.0.0.1"); parser.add_argument("--port", type=int, default=8000); parser.add_argument("--no-browser", action="store_true"); args = parser.parse_args(argv)
+    server = ThreadingHTTPServer((args.host, args.port), RequestHandler); url = f"http://{args.host}:{args.port}/"; print(f"アリ進化ゲームを起動しました: {url}")
     if not args.no_browser: webbrowser.open(url)
     try: server.serve_forever()
     except KeyboardInterrupt: pass

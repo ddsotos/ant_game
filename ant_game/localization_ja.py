@@ -6,47 +6,40 @@ from .models import ActionOption, ShieldSpec
 
 
 TAG_NAMES = {
-    "Morphology": "形態", "Chemistry": "化学", "Cooperation": "協同",
-    "Caste": "カースト", "Nesting": "巣作り", "Movement": "移動",
+    "Morphology": "形態", "Chemistry": "化学", "Sociality": "社会性",
+    "Nesting": "巣作り", "Movement": "移動",
     "Resource Ecology": "資源生態",
 }
 TAG_COLORS = {
-    "Morphology": "#0072B2", "Chemistry": "#E69F00", "Cooperation": "#009E73",
-    "Caste": "#D55E00", "Nesting": "#CC79A7", "Movement": "#56B4E9",
+    "Morphology": "#0072B2", "Chemistry": "#E69F00", "Sociality": "#009E73",
+    "Nesting": "#CC79A7", "Movement": "#56B4E9",
     "Resource Ecology": "#F0E442",
 }
 TAG_SYMBOLS = {
-    "Morphology": "mandibles", "Chemistry": "droplet", "Cooperation": "linked-ants",
-    "Caste": "castes", "Nesting": "nest", "Movement": "route",
+    "Morphology": "mandibles", "Chemistry": "droplet", "Sociality": "linked-ants",
+    "Nesting": "nest", "Movement": "route",
     "Resource Ecology": "leaf-seed",
 }
-HAZARD_NAMES = {
-    "flood": "洪水", "heat": "暑熱", "drought": "乾燥",
-    "fungal": "菌害", "raid": "襲撃",
+PROBLEM_NAMES = {
+    "raid": "襲撃", "fungal": "菌害", "nest_damage": "巣損傷",
 }
 SIZE_NAMES = {"SMALL": "小型", "MEDIUM": "中型", "LARGE": "大型", "GIANT": "超大型"}
 ROLE_NAMES = {"Foundation": "基盤", "Payoff": "完成形", "Bridge": "橋渡し"}
 
 EVENT_NAMES = {
-    "flood_torrent": ("洪水・濁流", "泥を含んだ濁流が地上の経路を押し流す。"),
-    "canopy_fragmentation": ("洪水・樹冠分断", "増水が樹冠の避難場所を切り離す。"),
+    "flood": ("洪水", "洪水が地上の経路を押し流し、樹冠を分断する。"),
     "desert_heat_wave": ("砂漠熱波", "強い日射と乾いた地表が巣外活動を危険にする。"),
-    "prolonged_drought": ("長期干ばつ", "長い乾季が地表の食料を失わせる。"),
-    "garden_epidemic": ("菌園疫病", "菌園に特化した病原体が栽培食料へ広がる。"),
-    "spore_contamination": ("胞子汚染", "空中の胞子が働きアリと菌園を汚染する。"),
-    "army_ant_raid": ("軍隊アリ侵攻", "統率された侵入群が巣へ押し寄せる。"),
-    "post_raid_injuries": ("襲撃後の負傷", "戦闘後に散らばった負傷者が群れを圧迫する。"),
+    "prolonged_drought": ("長期乾燥", "長い乾季が地表の食料を失わせる。"),
+    "habitat_instability": ("居住地不安定化", "巣の空間と基盤が劣化し、現在の居住地が危うくなる。"),
+    "landmark_loss": ("目印消失", "風と地表変化が採餌路の目印を消す。"),
 }
 
 OPTIMIZATION_NAMES = {
-    "flood_torrent": "生体いかだ",
-    "canopy_fragmentation": "樹冠退避",
-    "desert_heat_wave": "銀毛放熱",
+    "flood": "洪水適応（生体いかだ＋樹冠退避）",
+    "desert_heat_wave": "銀毛・熱ショック保護",
     "prolonged_drought": "地下穀倉",
-    "garden_epidemic": "共生菌園",
-    "spore_contamination": "口腔隔離",
-    "army_ant_raid": "生体城門",
-    "post_raid_injuries": "救助隊列",
+    "habitat_instability": "緊急引越し",
+    "landmark_loss": "天空コンパス航法",
 }
 
 CARD_NAMES = {
@@ -96,7 +89,7 @@ CARD_TEXTS = {
     "odontomachus_tension_lock": "ばね仕掛けの顎を、攻撃にも緊急脱出にも使う。",
     "pheidole_supermajor_program": "大きな投資で、目立つ超大型防衛個体を生み出す。",
     "pheidole_seed_miller": "大型兵の顎を、硬い種子の加工へ転用する。",
-    "myrmecocystus_reserve": "液体食料を蓄える個体で乾燥をしのぎ、別の選択肢を今すぐ得る。",
+    "myrmecocystus_reserve": "液体食料を蓄える個体から、別の選択肢を今すぐ引き出す。",
     "megaponera_field_medicine": "抗菌分泌物で負傷個体を治療し、狩りの損失を抑える。",
     "megaponera_rescue_column": "負傷した仲間を巣へ運び、働き手を将来へ残す。",
     "colobopsis_last_defense": "粘着性の分泌物を放つ自己犠牲で侵入者を止める。",
@@ -110,7 +103,7 @@ CARD_TEXTS = {
     "pheidole_raid_wall": "大型兵とワーカーを巣口へ集め、侵入隊を段階的に阻む。",
     "harpegnathos_gamergate": "ワーカーが繁殖個体へ移行できる柔軟なカーストを持つ。",
     "temnothorax_quorum_nest": "偵察個体の情報を集め、中央指揮なしで新居を決める。",
-    "pogonomyrmex_granary": "湿った地下の種子庫で乾燥をしのぎ、別の選択肢を今すぐ得る。",
+    "pogonomyrmex_granary": "地下の種子庫を活用し、別の選択肢を今すぐ得る。",
     "paltothyreus_distress_signal": "閉じ込められた個体の化学信号が仲間の救助を呼ぶ。",
     "solenopsis_dry_store": "食料を乾燥保存し、繁栄と新しい選択肢を同時に得る。",
     "solenopsis_raft_cycling": "筏の位置を交代しながら、長い洪水を耐え抜く。",
@@ -145,8 +138,8 @@ def requirement_text(requirements) -> str:
 
 
 def shield_text(shield: ShieldSpec) -> str:
-    hazard = HAZARD_NAMES.get(shield.hazard_tag, shield.hazard_tag)
-    return f"{hazard}シールド +{shield.amount}"
+    problem = PROBLEM_NAMES.get(shield.problem_id, shield.problem_id)
+    return f"{problem}シールド +{shield.amount}"
 
 
 def option_text(option: ActionOption) -> str:

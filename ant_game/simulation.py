@@ -36,9 +36,9 @@ def _game_metrics(
     ]
     activation_roles = Counter(design_roles.get(card_id, "Unknown") for card_id in activated_ids)
     size_counts = Counter(row.size.name.lower() for row in history)
-    shield_granted = sum(sum(row.defense_by_hazard.values()) for row in history)
+    shield_granted = sum(sum(row.defense_by_problem.values()) for row in history)
     shield_used = sum(
-        sum(min(row.hazard_rolls[tag], amount) for tag, amount in row.defense_by_hazard.items())
+        sum(min(row.problem_rolls[tag], amount) for tag, amount in row.defense_by_problem.items())
         for row in history
     )
     before_peak = history[:3]
@@ -67,8 +67,8 @@ def _game_metrics(
         "shield_granted": shield_granted,
         "shield_used": shield_used,
         "shield_surplus": shield_granted - shield_used,
-        "raw_damage": sum(sum(row.hazard_rolls.values()) for row in history),
-        "damage": sum(row.hazard_penalty for row in history),
+        "raw_damage": sum(sum(row.problem_rolls.values()) for row in history),
+        "damage": sum(row.problem_penalty for row in history),
         "max_action_chain": max(
             (sum(action["kind"] == "activate" for action in row.actions) for row in history),
             default=0,
@@ -190,7 +190,7 @@ def history_as_dict(state: GameState) -> dict[str, Any]:
         rows.append(data)
     return {
         "seed": state.seed,
-        "disasters": list(state.disaster_ids),
+        "environments": list(state.disaster_ids),
         "score": state.prosperity,
         "rounds": rows,
     }
@@ -198,15 +198,15 @@ def history_as_dict(state: GameState) -> dict[str, Any]:
 
 def history_as_text(state: GameState) -> str:
     lines = [
-        f"seed={state.seed} disasters={','.join(state.disaster_ids)} score={state.prosperity}"
+        f"seed={state.seed} environments={','.join(state.disaster_ids)} score={state.prosperity}"
     ]
     for row in state.history:
         actions = ",".join(action["kind"] for action in row.actions) or "-"
         retained = ",".join(row.retained) or "-"
         lines.append(
-            f"R{row.round_number} disaster={row.disaster_id} size={row.size.name:<6} "
+            f"R{row.round_number} environment={row.disaster_id} size={row.size.name:<6} "
             f"keep=[{retained}] actions=[{actions}] "
-            f"rolls={dict(row.hazard_rolls)} penalty={row.hazard_penalty} "
+            f"rolls={dict(row.problem_rolls)} penalty={row.problem_penalty} "
             f"prosperity={row.prosperity_delta:+d} total={row.total_prosperity} "
             f"optimization={row.optimization_met}"
         )

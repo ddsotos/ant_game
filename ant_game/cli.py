@@ -23,11 +23,11 @@ class HumanPolicy:
         self._show_last_round(state)
         context = state.current_round
         assert context is not None
-        disaster = engine.current_disaster(state)
+        environment = engine.current_disaster(state)
         self.say("\n" + "=" * 68)
         self.say(
-            f"ラウンド {context.round_number}/5  災害: {disaster.name}  "
-            f"出目 {context.hazard_rolls}"
+            f"ラウンド {context.round_number}/5  環境変化: {environment.name}  "
+            f"問題の出目 {context.problem_rolls}"
         )
         forecast = " / ".join(
             f"R{number}:{engine.disasters[item].name}"
@@ -38,8 +38,8 @@ class HumanPolicy:
             f"繁栄 {state.prosperity}  手札 {len(state.hand)}/{engine.hand_limit}"
         )
         self.say(
-            "最適化: " + disaster.optimization.name + " [" +
-            self._requirements(disaster.optimization.required_root_tags) + "]"
+            "最適化: " + environment.optimization.name + " [" +
+            self._requirements(environment.optimization.required_root_tags) + "]"
         )
 
         legal = engine.legal_sizes(state)
@@ -180,7 +180,7 @@ class HumanPolicy:
         self.say("\n前ラウンド結果:")
         self.say(
             f"  R{row.round_number} {row.disaster_id} size={row.size.name}  "
-            f"災害減点={row.hazard_penalty} 最適化={'達成' if row.optimization_met else '未達'}  "
+            f"問題減点={row.problem_penalty} 最適化={'達成' if row.optimization_met else '未達'}  "
             f"繁栄=+{row.prosperity_delta}  total={row.total_prosperity}"
         )
         if row.pushed_out:
@@ -218,7 +218,7 @@ class HumanPolicy:
             effects.append(f"繁栄+{option.prosperity}")
         for shield in option.shields:
             effects.append(
-                f"{shield.hazard_tag}シールド+{shield.amount}"
+                f"{shield.problem_id}シールド+{shield.amount}"
             )
         if option.draw_cards:
             effects.append(f"即時ドロー+{option.draw_cards}")
@@ -231,19 +231,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--list-disasters",
         action="store_true",
-        help="災害IDを表示して終了",
+        help="環境変化IDを表示して終了",
     )
     args = parser.parse_args(argv)
     if args.list_disasters:
-        for disaster in DISASTERS:
-            print(f"{disaster.id}: {disaster.name}")
+        for environment in DISASTERS:
+            print(f"{environment.id}: {environment.name}")
         return 0
 
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.4 — 5ラウンド試作")
-    print("開始時に全5ラウンドの災害と最適化が公開されます。")
+    print("アリ進化ゲーム v0.5 — 5ラウンド試作")
+    print("開始時に全5ラウンドの環境変化と最適化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)
     print(

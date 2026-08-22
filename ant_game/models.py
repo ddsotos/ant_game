@@ -39,14 +39,14 @@ class RoundPhase(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class ShieldSpec:
-    """A one-round defense against exactly one hazard tag."""
+    """A one-round defense against exactly one recurring problem."""
 
-    hazard_tag: str
+    problem_id: str
     amount: int
 
     def __post_init__(self) -> None:
-        if not isinstance(self.hazard_tag, str) or not self.hazard_tag:
-            raise ValueError("a shield must name exactly one hazard tag")
+        if not isinstance(self.problem_id, str) or not self.problem_id:
+            raise ValueError("a shield must name exactly one problem")
         if self.amount <= 0:
             raise ValueError("shield amount must be positive")
 
@@ -82,7 +82,7 @@ class TraitCard:
 
 @dataclass(frozen=True, slots=True)
 class OptimizationRequirement:
-    """A disaster-specific board target, printed on the disaster card."""
+    """An environment-specific board target, printed on the environment card."""
 
     name: str
     required_root_tags: Mapping[str, int] = field(default_factory=dict)
@@ -101,22 +101,20 @@ class OptimizationRequirement:
 
 
 @dataclass(frozen=True, slots=True)
-class DisasterCard:
+class EnvironmentCard:
     id: str
     name: str
-    hazard_tags: frozenset[str]
     optimization: OptimizationRequirement
     text: str = ""
 
     def __post_init__(self) -> None:
         if not self.id or not self.name:
-            raise ValueError("disaster must have an id and name")
-        if not self.hazard_tags or any(not isinstance(tag, str) or not tag for tag in self.hazard_tags):
-            raise ValueError("disaster must have at least one hazard tag")
+            raise ValueError("environment must have an id and name")
 
-    @property
-    def tags(self) -> frozenset[str]:
-        return self.hazard_tags
+# The old public name is kept while callers migrate from disaster cards to
+# environment cards.  Environment cards deliberately have no hazard/problem
+# classification; recurring problems are rolled independently each round.
+DisasterCard = EnvironmentCard
 
 
 @dataclass(slots=True)
@@ -146,7 +144,7 @@ class ColumnState:
 class RoundContext:
     round_number: int
     disaster_id: str
-    hazard_rolls: dict[str, int] = field(default_factory=dict)
+    problem_rolls: dict[str, int] = field(default_factory=dict)
     size_before: Size = Size.SMALL
     candidate_ids: tuple[str, ...] = ()
     candidate_instances: list[CardInstance] = field(default_factory=list)
@@ -182,16 +180,16 @@ class RoundRecord:
     retained: tuple[str, ...]
     actions: tuple[dict[str, Any], ...]
     pushed_out: tuple[str, ...]
-    hazard_rolls: Mapping[str, int]
-    defense_by_hazard: Mapping[str, int]
-    unblocked_by_hazard: Mapping[str, int]
-    penalty_by_hazard: Mapping[str, int]
-    hazard_penalty: int
+    problem_rolls: Mapping[str, int]
+    defense_by_problem: Mapping[str, int]
+    unblocked_by_problem: Mapping[str, int]
+    penalty_by_problem: Mapping[str, int]
+    problem_penalty: int
     prosperity_base: int
     prosperity_delta: int
     score_before: int
     score_after_prosperity: int
-    score_after_hazard: int
+    score_after_problems: int
     optimization_met: bool
     optimization_required_tags: Mapping[str, int]
     optimization_actual_tags: Mapping[str, int]

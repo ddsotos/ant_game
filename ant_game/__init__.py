@@ -1,6 +1,6 @@
 """Headless five-round ant adaptation prototype."""
 
-from .engine import GameEngine, InvalidDecision
+from .engine import GameEngine, InvalidDecision, PROBLEM_IDS
 from .models import (
     ActionCommand,
     ActionOption,
@@ -8,6 +8,7 @@ from .models import (
     CardRole,
     ColumnState,
     DisasterCard,
+    EnvironmentCard,
     GameState,
     OptimizationRequirement,
     PlayedCard,
@@ -27,9 +28,11 @@ __all__ = [
     "CardRole",
     "ColumnState",
     "DisasterCard",
+    "EnvironmentCard",
     "GameEngine",
     "GameState",
     "InvalidDecision",
+    "PROBLEM_IDS",
     "OptimizationRequirement",
     "PlayedCard",
     "RoundContext",

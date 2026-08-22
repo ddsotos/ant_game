@@ -351,3 +351,28 @@ Why:
 The staged environment had become burdened with multiple coupled subsystems and made the user wait for simulation evidence before personally judging the game. The new structure exposes all five strategic targets immediately while the die roll creates a different short-term defensive problem each round. Optimization reuses the existing board-tag mechanism, and failure affects the same prosperity score rather than introducing a separate death track.
 
 This is a structural redesign and resets prior balance conclusions. It is a human-play baseline, not a `promising` result. The next accepted changes should be based first on concrete human play decisions and should remain limited to one to three targeted adjustments.
+
+## D-018 — v0.5: separate environmental change from recurring problems
+
+Date: 2026-08-22
+
+Accepted by direct user request:
+
+- Merge `Cooperation` and `Caste` into one `Sociality` root tag; do not count cards that formerly had both twice.
+- Treat forecast cards as long-term environmental changes that contain only an Optimization, not a shield/problem category.
+- Use exactly five environmental changes: Flood, Desert Heat Wave, Prolonged Drought, Habitat Instability, and Landmark Loss.
+- Combine living-raft and canopy-retreat biology into one Flood Optimization rather than two forecast cards.
+- Move heat-shock response into the Desert Heat Wave Optimization.
+- Remove spore contamination and post-raid injuries as separate environmental changes; represent them inside recurring fungal and raid problems.
+- Independently roll 1d6 for raid, fungal disease, and nest damage every round. Typed one-round shields answer those three problems regardless of the current environmental change.
+- Remove heat and drought shields. Storage adaptations use conditional draw rather than shields.
+- Treat draw as a scarce strong effect: six cards have draw and all require supporting tags.
+- Increase immediately usable cards: sixteen of thirty normal cards are unconditional, especially ordinary shield-1 cards.
+- Require substantial tag preparation for every shield of three or more.
+- Keep the existing `2^n`, zero floor, and Optimization-halving sequence for the first human-play build, while explicitly flagging the increased three-die pressure for review.
+
+Why:
+
+The v0.4 card conflated two time scales: predictable habitat change and routine colony hazards. Separating them makes the forecast ask “what kind of ant must this colony become?” while the three problem dice ask “what must it handle right now?” The tag merge removes a semantic distinction that was not useful to the player. Scarce, gated draw prevents card flow from becoming an automatic best action, while unconditional small shields preserve legal tactical responses.
+
+This is another structural human-play baseline and does not count toward `promising`. The first tuning question is whether three independent exponential losses erase prosperity too often.

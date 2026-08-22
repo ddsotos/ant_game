@@ -73,11 +73,11 @@ class Strategy:
             for shield in option.shields:
                 existing = sum(
                     item.amount for item in context.shields
-                    if item.hazard_tag == shield.hazard_tag
+                    if item.problem_id == shield.problem_id
                 )
                 applicable += min(
                     shield.amount,
-                    max(0, context.hazard_rolls.get(shield.hazard_tag, 0) - existing),
+                    max(0, context.problem_rolls.get(shield.problem_id, 0) - existing),
                 )
         return (
             self.prosperity_weight * option.prosperity * max(1, state.size.prosperity_multiplier)
@@ -86,10 +86,7 @@ class Strategy:
         )
 
     def hold_option_value(self, option: ActionOption, state: GameState, engine) -> float:
-        applicable = sum(
-            shield.amount for shield in option.shields
-            if shield.hazard_tag in engine.current_disaster(state).hazard_tags
-        )
+        applicable = sum(shield.amount for shield in option.shields)
         return (
             self.prosperity_weight * option.prosperity * max(1, state.size.prosperity_multiplier)
             + self.shield_weight * applicable
@@ -210,8 +207,8 @@ class Reactive(Strategy):
 
     def choose_size(self, state, engine):
         context = state.current_round
-        pressure = sum(context.hazard_rolls.values()) if context else 0
-        target = Size.SMALL if pressure >= 5 else Size.LARGE
+        pressure = sum(context.problem_rolls.values()) if context else 0
+        target = Size.SMALL if pressure >= 12 else Size.LARGE
         return self.step_toward(state, engine, target)
 
 

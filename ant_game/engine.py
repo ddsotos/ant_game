@@ -14,7 +14,7 @@ from .models import (
     CardInstance,
     CardRole,
     ColumnState,
-    DisasterCard,
+    EnvironmentCard,
     GameState,
     PlayedCard,
     RoundContext,
@@ -26,17 +26,22 @@ from .models import (
 )
 
 
+# These problems are present every round, independently of the forecast
+# environment card.  Their ids are also the ids printed on typed shields.
+PROBLEM_IDS: tuple[str, ...] = ("raid", "fungal", "nest_damage")
+
+
 class InvalidDecision(ValueError):
     """Raised when a command is not legal in the current phase/state."""
 
 
 class GameEngine:
-    """Five-round game using five public, non-repeating disasters."""
+    """Five-round game using five public, non-repeating environments."""
 
     def __init__(
         self,
         traits: Iterable[TraitCard],
-        disasters: Iterable[DisasterCard],
+        disasters: Iterable[EnvironmentCard],
         seed: int = 0,
         *,
         columns: int = 3,
@@ -118,7 +123,7 @@ class GameEngine:
         value = int(state.size)
         return tuple(Size(index) for index in range(max(0, value - 1), min(3, value + 1) + 1))
 
-    def current_disaster(self, state: GameState) -> DisasterCard:
+    def current_disaster(self, state: GameState) -> EnvironmentCard:
         if state.current_round is not None:
             disaster_id = state.current_round.disaster_id
         elif state.disaster_ids:
@@ -134,7 +139,7 @@ class GameEngine:
         return self.retention_curve[state.size]
 
     # ------------------------------------------------------------- round flow
-    def start_round(self, state: GameState) -> DisasterCard:
+    def start_round(self, state: GameState) -> EnvironmentCard:
         self._require_phase(state, RoundPhase.IDLE)
         if state.round_number >= self.rounds:
             state.phase = RoundPhase.COMPLETE
@@ -142,12 +147,12 @@ class GameEngine:
         disaster = self.disasters[state.disaster_ids[state.round_number]]
         rng = random.Random()
         rng.setstate(state.rng_state)
-        rolls = {hazard: rng.randint(1, 6) for hazard in sorted(disaster.hazard_tags)}
+        problem_rolls = {problem: rng.randint(1, 6) for problem in PROBLEM_IDS}
         state.rng_state = rng.getstate()
         state.current_round = RoundContext(
             round_number=state.round_number + 1,
             disaster_id=disaster.id,
-            hazard_rolls=rolls,
+            problem_rolls=problem_rolls,
             size_before=state.size,
         )
         state.phase = RoundPhase.SIZE
@@ -286,7 +291,7 @@ class GameEngine:
         return option
 
     def resolve_environment(self, state: GameState) -> RoundRecord:
-        """Resolve prosperity, exponential hazards, then optimization."""
+        """Resolve prosperity, recurring problems, then optimization."""
 
         self._require_phase(state, RoundPhase.ACTIONS)
         assert state.current_round is not None
@@ -297,19 +302,19 @@ class GameEngine:
         state.prosperity += prosperity_delta
         score_after_prosperity = state.prosperity
 
-        defense_by_hazard: dict[str, int] = {}
-        unblocked_by_hazard: dict[str, int] = {}
-        penalty_by_hazard: dict[str, int] = {}
-        for hazard in sorted(disaster.hazard_tags):
-            defense = sum(shield.amount for shield in context.shields if shield.hazard_tag == hazard)
-            unblocked = max(0, context.hazard_rolls[hazard] - defense)
+        defense_by_problem: dict[str, int] = {}
+        unblocked_by_problem: dict[str, int] = {}
+        penalty_by_problem: dict[str, int] = {}
+        for problem in PROBLEM_IDS:
+            defense = sum(shield.amount for shield in context.shields if shield.problem_id == problem)
+            unblocked = max(0, context.problem_rolls[problem] - defense)
             penalty = 0 if unblocked == 0 else 2 ** unblocked
-            defense_by_hazard[hazard] = defense
-            unblocked_by_hazard[hazard] = unblocked
-            penalty_by_hazard[hazard] = penalty
-        hazard_penalty = sum(penalty_by_hazard.values())
-        state.prosperity = max(0, state.prosperity - hazard_penalty)
-        score_after_hazard = state.prosperity
+            defense_by_problem[problem] = defense
+            unblocked_by_problem[problem] = unblocked
+            penalty_by_problem[problem] = penalty
+        problem_penalty = sum(penalty_by_problem.values())
+        state.prosperity = max(0, state.prosperity - problem_penalty)
+        score_after_problems = state.prosperity
 
         actual_tags = self.board_tags(state)
         required_tags = dict(disaster.optimization.required_root_tags)
@@ -341,16 +346,16 @@ class GameEngine:
             retained=context.retained_ids,
             actions=tuple(context.action_log),
             pushed_out=pushed_out,
-            hazard_rolls=dict(context.hazard_rolls),
-            defense_by_hazard=defense_by_hazard,
-            unblocked_by_hazard=unblocked_by_hazard,
-            penalty_by_hazard=penalty_by_hazard,
-            hazard_penalty=hazard_penalty,
+            problem_rolls=dict(context.problem_rolls),
+            defense_by_problem=defense_by_problem,
+            unblocked_by_problem=unblocked_by_problem,
+            penalty_by_problem=penalty_by_problem,
+            problem_penalty=problem_penalty,
             prosperity_base=context.prosperity_base,
             prosperity_delta=prosperity_delta,
             score_before=score_before,
             score_after_prosperity=score_after_prosperity,
-            score_after_hazard=score_after_hazard,
+            score_after_problems=score_after_problems,
             optimization_met=optimization_met,
             optimization_required_tags=required_tags,
             optimization_actual_tags=dict(actual_tags),
@@ -507,4 +512,4 @@ class GameEngine:
         target.__dict__.update(source.__dict__)
 
 
-__all__ = ["GameEngine", "InvalidDecision"]
+__all__ = ["GameEngine", "InvalidDecision", "PROBLEM_IDS"]
