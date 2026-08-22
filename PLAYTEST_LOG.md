@@ -953,3 +953,26 @@ Next test: the player completes several seeds in the Japanese browser and record
 ### Status and next test
 
 This iteration does not count toward `promising`. The next evidence must come from human play. Record whether scores repeatedly return to zero, whether the player can meaningfully choose among three defenses, whether gated draw remains attractive without becoming automatic, and whether the five Optimizations suggest different builds.
+
+## v0.6 Human-play access update — five roots, d4 problems, placement guidance
+
+### Authorized changes
+
+- Remove the Movement root card by card, reinterpreting it only where another biological root explains the adaptation and otherwise deleting it.
+- Roll each of the three recurring problems independently on 1d4.
+- Show the existing hand during retention selection.
+- Mark ordinary placements green when immediately activatable and yellow when exactly one tag short, using the column after any capacity push-out.
+- Allow the browser player to undo the previous successful operation, including a round resolution and its RNG state.
+
+### Engineering evidence
+
+- Formal content, Optimization requirements, localization, and browser configuration expose exactly five root tags and no Movement tag.
+- The research catalog contains the per-card Movement audit and biological rationale.
+- Rule tests cover deterministic d4 bounds. Browser-service tests cover hand visibility during retention, Undo restoration, failed-action history, and capacity-aware placement prediction.
+- JavaScript syntax, Python compilation, the automated test suite, and a basic HTTP endpoint smoke check are the permitted verification for this delivery.
+
+### Playtest and review status
+
+No NPC simulation, automated strategy batch, representative-game analysis, or human playtest was performed for this update, by explicit user request. Automated rule and interface tests are engineering verification, not playtest evidence. This update therefore does not count toward the three stable reviews required for `promising`.
+
+Next test is intentionally left to the player: use the browser build and report concrete decisions or interface problems before any balance iteration.

@@ -7,17 +7,17 @@ from .models import ActionOption, ShieldSpec
 
 TAG_NAMES = {
     "Morphology": "形態", "Chemistry": "化学", "Sociality": "社会性",
-    "Nesting": "巣作り", "Movement": "移動",
+    "Nesting": "巣作り",
     "Resource Ecology": "資源生態",
 }
 TAG_COLORS = {
     "Morphology": "#0072B2", "Chemistry": "#E69F00", "Sociality": "#009E73",
-    "Nesting": "#CC79A7", "Movement": "#56B4E9",
+    "Nesting": "#CC79A7",
     "Resource Ecology": "#F0E442",
 }
 TAG_SYMBOLS = {
     "Morphology": "mandibles", "Chemistry": "droplet", "Sociality": "linked-ants",
-    "Nesting": "nest", "Movement": "route",
+    "Nesting": "nest",
     "Resource Ecology": "leaf-seed",
 }
 PROBLEM_NAMES = {

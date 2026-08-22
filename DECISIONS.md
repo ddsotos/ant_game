@@ -376,3 +376,19 @@ Why:
 The v0.4 card conflated two time scales: predictable habitat change and routine colony hazards. Separating them makes the forecast ask “what kind of ant must this colony become?” while the three problem dice ask “what must it handle right now?” The tag merge removes a semantic distinction that was not useful to the player. Scarce, gated draw prevents card flow from becoming an automatic best action, while unconditional small shields preserve legal tactical responses.
 
 This is another structural human-play baseline and does not count toward `promising`. The first tuning question is whether three independent exponential losses erase prosperity too often.
+
+## D-019 — v0.6: remove Movement and add reversible placement guidance
+
+Date: 2026-08-22
+
+Accepted by direct user request:
+
+- Remove `Movement` as a root tag. Reinterpret each affected card through the biological adaptation that produces movement—such as morphology, chemistry, sociality, nesting, or resource ecology—or delete the tag when it adds no independent meaning. Record every individual judgment in `ANT_RESEARCH_CATALOG.md`.
+- Reduce each independent raid, fungal, and nest-damage roll from 1d6 to 1d4 while retaining typed shields and the existing exponential penalty.
+- During retention, show the player's existing hand beside the new candidates.
+- Color ordinary placement buttons green when the played card would immediately meet its activation requirement, yellow when it would be exactly one tag short, and neutrally otherwise. Calculate this from the post-placement column, including the loss of the oldest card when the column is full.
+- Add an Undo control that restores the complete state before the previous successful UI action, including deterministic RNG state. Failed actions do not enter undo history.
+
+Why:
+
+Movement described an outcome shared by many adaptations rather than an independent evolutionary basis, and overlapped heavily with the other roots. The UI changes expose information already present in the rules without adding a gameplay subsystem. The d4 change lowers the ceiling of three simultaneous exponential losses. Per the user's instruction, this build is delivered for human play without NPC simulation or a balance playtest, so none of these changes establishes `promising` status.

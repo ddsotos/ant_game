@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>アリ進化ゲーム v0.5</title>
+  <title>アリ進化ゲーム v0.6</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -12,11 +12,11 @@
     <symbol id="symbol-droplet" viewBox="0 0 24 24"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z"/><circle cx="10" cy="15" r="1"/></symbol>
     <symbol id="symbol-sociality" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><circle cx="6" cy="15" r="3"/><circle cx="18" cy="15" r="3"/><path d="M10 9 8 13m6-4 2 4M9 17h6"/></symbol>
     <symbol id="symbol-nest" viewBox="0 0 24 24"><path d="M3 19h18M5 19c0-7 3-12 7-12s7 5 7 12M9 19v-4a3 3 0 0 1 6 0v4"/><circle cx="12" cy="4" r="1"/></symbol>
-    <symbol id="symbol-route" viewBox="0 0 24 24"><path d="M3 18c5 0 3-10 9-10h7m-3-3 3 3-3 3"/><circle cx="4" cy="18" r="2"/></symbol>
     <symbol id="symbol-leaf-seed" viewBox="0 0 24 24"><path d="M4 17C4 8 11 4 20 4c0 9-4 16-13 16M7 18 17 8"/><circle cx="18" cy="18" r="3"/></symbol>
     <symbol id="symbol-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></symbol>
   </svg>
   <main>
+    <button id="undo" class="quiet hidden" disabled>一手戻す</button>
     <header><div><span class="eyebrow">5ラウンド・環境変化と適応</span><h1>アリ進化ゲーム</h1></div><button id="restart" class="quiet hidden">新しいゲーム</button></header>
     <section id="setup" class="panel setup"><h2>ゲームを始める</h2><p>5つの環境変化予報と、毎ラウンドの3問題を見ながら進化させます。</p><label>プレイ用 seed<input id="seed" type="number" value="42"></label><button id="start" class="primary">ゲームを開始</button></section>
     <div id="game" class="hidden">

@@ -4,17 +4,20 @@ from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from ant_game.engine import PROBLEM_IDS
+import pytest
+
+from ant_game.engine import PROBLEM_IDS, InvalidDecision
+from ant_game.models import PlayedCard
 from ant_game.webapp import RequestHandler, WebGameService
 
 
-def test_service_exposes_six_tags_and_environment_forecast_without_problem_classes():
+def test_service_exposes_five_tags_and_environment_forecast_without_problem_classes():
     service = WebGameService()
     first = service.new_game(seed=3)["state"]
     second = service.new_game(seed=3)["state"]
-    assert len(service.config()["tags"]) == 6
+    assert len(service.config()["tags"]) == 5
     assert {tag["id"] for tag in service.config()["tags"]} == {
-        "Morphology", "Chemistry", "Sociality", "Nesting", "Movement", "Resource Ecology"
+        "Morphology", "Chemistry", "Sociality", "Nesting", "Resource Ecology"
     }
     assert len(first["forecast"]) == 5
     assert [item["id"] for item in first["forecast"]] == [item["id"] for item in second["forecast"]]
@@ -36,7 +39,7 @@ def test_problem_rolls_and_shields_are_projected_independently():
     result = service.new_game(seed=4)
     game_id = result["game_id"]
     state = service.act(game_id, "size", {"size": "small"})["state"]
-    assert all(problem["roll"] in range(1, 7) for problem in state["problems"])
+    assert all(problem["roll"] in range(1, 5) for problem in state["problems"])
     state = service.act(game_id, "retain", {"card_ids": []})["state"]
     assert all(set(problem) >= {"id", "roll", "shield", "unblocked", "penalty"} for problem in state["problems"])
     state = service.act(game_id, "resolve", {})["state"]
@@ -46,6 +49,55 @@ def test_problem_rolls_and_shields_are_projected_independently():
     for problem in result["problems"]:
         assert problem["unblocked"] == max(0, problem["roll"] - problem["defense"])
         assert problem["penalty"] == (0 if problem["unblocked"] == 0 else 2 ** problem["unblocked"])
+
+
+def test_retention_projection_keeps_existing_hand_visible():
+    service = WebGameService()
+    opened = service.new_game(seed=12)
+    game_id = opened["game_id"]
+    state = service.act(game_id, "size", {"size": "small"})["state"]
+    kept_id = state["candidates"][0]["id"]
+    service.act(game_id, "retain", {"card_ids": [kept_id]})
+    service.act(game_id, "resolve", {})
+    state = service.act(game_id, "size", {"size": "small"})["state"]
+    assert state["phase"] == "retain"
+    assert [card["id"] for card in state["hand"]] == [kept_id]
+
+
+def test_undo_restores_the_previous_action_and_failed_actions_add_nothing():
+    service = WebGameService()
+    opened = service.new_game(seed=17)
+    game_id = opened["game_id"]
+    original = opened["state"]
+    changed = service.act(game_id, "size", {"size": "small"})["state"]
+    assert changed["phase"] == "retain"
+    assert changed["can_undo"] is True
+
+    restored = service.act(game_id, "undo", {})["state"]
+    assert restored["phase"] == "size"
+    assert restored["problems"] == original["problems"]
+    assert restored["can_undo"] is False
+    with pytest.raises(InvalidDecision):
+        service.act(game_id, "unknown", {})
+    assert service.get(game_id)["state"]["can_undo"] is False
+
+
+def test_placement_color_prediction_accounts_for_oldest_card_pushout():
+    service = WebGameService()
+    opened = service.new_game(seed=21)
+    session = service.sessions[opened["game_id"]]
+    target = session.engine.traits["oecophylla_living_chain"]
+    assert target.activation_requirements == {"Sociality": 2}
+    session.state.columns[0].cards = [
+        PlayedCard("old-social", "collective_foraging"),
+        PlayedCard("non-social-1", "trail_pheromone"),
+        PlayedCard("non-social-2", "trail_pheromone"),
+        PlayedCard("non-social-3", "trail_pheromone"),
+        PlayedCard("non-social-4", "trail_pheromone"),
+    ]
+    option = service._placement_option_data(session.engine, session.state, 0, target)
+    assert option["status"] == "other"
+    assert option["requirements"][0]["missing"] == 2
 
 
 def test_browser_service_completes_all_five_environment_rounds():
@@ -96,7 +148,7 @@ def test_real_http_server_serves_v05_page_and_rejects_non_object_json():
             assert "max-width:420px" in css
         with urlopen(base + "/api/config", timeout=2) as response:
             config = json.load(response)
-            assert len(config["tags"]) == 6
+            assert len(config["tags"]) == 5
             assert len(config["environments"]) >= 5
             assert len(config["problems"]) == 3
         request = Request(base + "/api/new", data=b"[]", headers={"Content-Type": "application/json"}, method="POST")

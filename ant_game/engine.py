@@ -147,7 +147,9 @@ class GameEngine:
         disaster = self.disasters[state.disaster_ids[state.round_number]]
         rng = random.Random()
         rng.setstate(state.rng_state)
-        problem_rolls = {problem: rng.randint(1, 6) for problem in PROBLEM_IDS}
+        # The three recurring problems are intentionally lighter than the
+        # forecast die: each is an independent d4 roll.
+        problem_rolls = {problem: rng.randint(1, 4) for problem in PROBLEM_IDS}
         state.rng_state = rng.getstate()
         state.current_round = RoundContext(
             round_number=state.round_number + 1,

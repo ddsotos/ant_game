@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import threading
 import uuid
@@ -11,6 +12,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from collections import Counter
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -33,7 +35,6 @@ TAG_INFO: dict[str, tuple[str, str, str]] = {
     "Chemistry": ("化学", "#E69F00", "droplet"),
     "Sociality": ("社会性", "#009E73", "sociality"),
     "Nesting": ("巣作り", "#CC79A7", "nest"),
-    "Movement": ("移動", "#56B4E9", "route"),
     "Resource Ecology": ("資源生態", "#F0E442", "leaf-seed"),
 }
 PROBLEM_NAMES = {"raid": "襲撃", "fungal": "菌害", "nest_damage": "巣の損傷"}
@@ -44,6 +45,7 @@ SIZE_LABELS = {"SMALL": "小", "MEDIUM": "中", "LARGE": "大", "GIANT": "巨大
 class Session:
     engine: GameEngine
     state: GameState
+    undo_stack: list[GameState]
 
 
 class WebGameService:
@@ -66,7 +68,7 @@ class WebGameService:
             state = engine.new_game()
             engine.start_round(state)
             game_id = uuid.uuid4().hex
-            self.sessions[game_id] = Session(engine, state)
+            self.sessions[game_id] = Session(engine, state, [])
             return {"game_id": game_id, "state": self.project(engine, state)}
 
     def act(self, game_id: str, kind: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -75,6 +77,13 @@ class WebGameService:
             if session is None:
                 raise InvalidDecision("ゲームが見つかりません。新しいゲームを開始してください。")
             engine, state = session.engine, session.state
+            if kind == "undo":
+                if not session.undo_stack:
+                    raise InvalidDecision("戻せる操作がありません")
+                session.state = session.undo_stack.pop()
+                return {"game_id": game_id, "state": self.project(engine, session.state, session)}
+            snapshot = copy.deepcopy(state)
+            state = copy.deepcopy(state)
             if kind == "size":
                 engine.choose_size(state, self._parse_size(payload.get("size")))
             elif kind == "retain":
@@ -91,14 +100,16 @@ class WebGameService:
                     engine.start_round(state)
             else:
                 raise InvalidDecision("不明な操作です。")
-            return {"game_id": game_id, "state": self.project(engine, state)}
+            session.state = state
+            session.undo_stack.append(snapshot)
+            return {"game_id": game_id, "state": self.project(engine, state, session)}
 
     def get(self, game_id: str) -> dict[str, Any]:
         with self._lock:
             session = self.sessions.get(game_id)
             if session is None:
                 raise InvalidDecision("ゲームが見つかりません。")
-            return {"game_id": game_id, "state": self.project(session.engine, session.state)}
+            return {"game_id": game_id, "state": self.project(session.engine, session.state, session)}
 
     @staticmethod
     def _parse_size(raw: Any) -> Size:
@@ -107,7 +118,7 @@ class WebGameService:
         except KeyError as exc:
             raise InvalidDecision("選べないサイズです。") from exc
 
-    def project(self, engine: GameEngine, state: GameState) -> dict[str, Any]:
+    def project(self, engine: GameEngine, state: GameState, session: Session | None = None) -> dict[str, Any]:
         context = state.current_round
         environment = engine.current_disaster(state)
         last = state.history[-1] if state.history else None
@@ -137,10 +148,39 @@ class WebGameService:
             },
             "problems": [self._problem_data(problem, context.problem_rolls.get(problem), shields.get(problem, 0)) for problem in PROBLEM_IDS] if context else [],
             "candidates": [self._card_data(engine.traits[item.card_id], item.instance_id) for item in (context.candidate_instances if context else ())],
-            "hand": [self._card_data(engine.traits[item.card_id], item.instance_id) for item in state.hand],
+            "hand": [self._hand_card_data(engine, state, item) for item in state.hand],
             "columns": [self._column_data(engine, state, index) for index in range(len(state.columns))],
             "last_result": None if last is None else self._result_data(engine, last),
+            "can_undo": bool(session and session.undo_stack),
         }
+
+    def _hand_card_data(self, engine: GameEngine, state: GameState, instance: Any) -> dict[str, Any]:
+        data = self._card_data(engine.traits[instance.card_id], instance.instance_id)
+        data["placement_options"] = [
+            self._placement_option_data(engine, state, index, engine.traits[instance.card_id])
+            for index in range(len(state.columns))
+        ]
+        return data
+
+    def _placement_option_data(self, engine: GameEngine, state: GameState, index: int, card: TraitCard) -> dict[str, Any]:
+        """Classify a play button from the board that would exist after playing it."""
+        column = state.columns[index]
+        existing = list(column.cards)
+        if len(existing) >= engine.column_capacity:
+            existing = existing[1:]
+        activation_tags: Counter[str] = Counter()
+        for played in existing:
+            activation_tags.update(engine.traits[played.card_id].root_tags)
+        missing = sum(max(0, required - activation_tags.get(tag, 0)) for tag, required in card.activation_requirements.items())
+        if not card.activation_requirements:
+            status = "ready"
+        elif missing == 0:
+            status = "ready"
+        elif missing == 1:
+            status = "one-short"
+        else:
+            status = "other"
+        return {"column": index, "status": status, "requirements": self._requirements_data(card.activation_requirements, activation_tags)}
 
     def _forecast_data(self, engine: GameEngine, state: GameState, index: int) -> dict[str, Any]:
         environment = engine.disasters[state.disaster_ids[index]]
@@ -242,7 +282,7 @@ def japanese_error(exc: Exception) -> str:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.5"
+    server_version = "AntGame/0.6"
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path

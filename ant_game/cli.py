@@ -242,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.5 — 5ラウンド試作")
+    print("アリ進化ゲーム v0.6 — 5ラウンド試作")
     print("開始時に全5ラウンドの環境変化と最適化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)

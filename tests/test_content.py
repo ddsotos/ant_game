@@ -1,4 +1,4 @@
-"""Content invariants for the six-tag environmental-change ruleset."""
+"""Content invariants for the five-tag environmental-change ruleset."""
 
 from ant_game.content import DISASTERS, NORMAL_TRAITS, ROOT_TAGS, STARTERS, TRAITS
 from ant_game.localization_ja import EVENT_NAMES, OPTIMIZATION_NAMES, TAG_COLORS, TAG_NAMES, TAG_SYMBOLS
@@ -6,11 +6,11 @@ from ant_game.models import CardRole, DisasterCard, TraitCard
 
 
 ENVIRONMENT_SHAPES = {
-    "flood": {"Sociality": 3, "Morphology": 1, "Movement": 3, "Nesting": 1, "Resource Ecology": 1},
+    "flood": {"Sociality": 3, "Morphology": 1, "Nesting": 1, "Resource Ecology": 1},
     "desert_heat_wave": {"Morphology": 3, "Chemistry": 2},
     "prolonged_drought": {"Nesting": 3, "Resource Ecology": 2},
-    "habitat_instability": {"Sociality": 2, "Movement": 2, "Nesting": 1},
-    "landmark_loss": {"Movement": 3, "Resource Ecology": 1},
+    "habitat_instability": {"Sociality": 2, "Nesting": 2},
+    "landmark_loss": {"Resource Ecology": 3},
 }
 
 
@@ -29,15 +29,17 @@ def test_cards_are_actions_and_starters_are_immediately_usable() -> None:
     assert not any(any(option.draw_cards for option in card.options) for card in STARTERS)
 
 
-def test_six_tags_and_sociality_replacement() -> None:
+def test_five_tags_and_sociality_replacement() -> None:
     used = set().union(*(card.root_tags for card in TRAITS))
     assert used == set(ROOT_TAGS)
-    assert ROOT_TAGS == {"Morphology", "Chemistry", "Sociality", "Nesting", "Movement", "Resource Ecology"}
+    assert ROOT_TAGS == {"Morphology", "Chemistry", "Sociality", "Nesting", "Resource Ecology"}
     assert "Cooperation" not in used and "Caste" not in used
     assert set(TAG_NAMES) == set(TAG_COLORS) == set(TAG_SYMBOLS) == set(ROOT_TAGS)
-    assert len(set(TAG_COLORS.values())) == len(set(TAG_SYMBOLS.values())) == 6
+    assert len(set(TAG_COLORS.values())) == len(set(TAG_SYMBOLS.values())) == 5
     cards = {card.id: card for card in TRAITS}
     assert cards["pheidole_seed_miller"].root_tags == {"Sociality", "Morphology", "Resource Ecology"}
+    assert all("Movement" not in card.root_tags and "Movement" not in card.activation_requirements for card in TRAITS)
+    assert all("Movement" not in environment.optimization.required_root_tags for environment in DISASTERS)
 
 
 def test_provenance_is_present() -> None:

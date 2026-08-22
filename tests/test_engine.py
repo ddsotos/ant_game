@@ -84,7 +84,7 @@ def force_first_disaster(game: GameEngine, state, disaster_id: str = "d0") -> No
     state.disaster_ids = (disaster_id, *remaining[:4])
 
 
-def test_five_unique_environments_are_public_and_seed_reproducible():
+def test_independent_problems_are_d4_and_seed_reproducible():
     first = engine().new_game()
     second = engine().new_game()
     assert len(first.disaster_ids) == len(set(first.disaster_ids)) == 5
@@ -101,7 +101,7 @@ def test_five_unique_environments_are_public_and_seed_reproducible():
             engine_for_state.retain_cards(state, ())
             engine_for_state.resolve_environment(state)
     assert first_rolls == second_rolls
-    assert all(1 <= roll <= 6 for row in first_rolls for roll in row.values())
+    assert all(1 <= roll <= 4 for row in first_rolls for roll in row.values())
     assert all(set(row) == set(PROBLEM_IDS) for row in first_rolls)
     assert first.phase is second.phase is RoundPhase.COMPLETE
     assert first.round_number == second.round_number == 5
