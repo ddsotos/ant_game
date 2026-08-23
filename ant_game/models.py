@@ -101,10 +101,24 @@ class TraitCard:
     biology_source: str = ""
     design_role: str = "Foundation"
     text: str = ""
+    # Most cards provide one copy of each printed root tag.  A few strongly
+    # specialized foundations may print two copies of a tag; keeping the
+    # multiplicity separate preserves the set-based compatibility API.
+    root_tag_counts: Mapping[str, int] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if any(tag not in self.root_tags for tag in self.root_tag_counts):
+            raise ValueError("root tag counts may only name printed root tags")
+        if any(amount < 1 for amount in self.root_tag_counts.values()):
+            raise ValueError("root tag counts must be positive")
 
     @property
     def tags(self) -> frozenset[str]:
         return self.root_tags
+
+    @property
+    def counted_root_tags(self) -> Mapping[str, int]:
+        return {tag: self.root_tag_counts.get(tag, 1) for tag in self.root_tags}
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,7 +225,18 @@ class RoundContext:
     candidate_instances: list[CardInstance] = field(default_factory=list)
     retained_ids: tuple[str, ...] = ()
     action_log: list[dict[str, Any]] = field(default_factory=list)
+    # Gross unmultiplied round prosperity, broken down so the UI can explain
+    # where the current pool came from before problems and size are applied.
+    base_prosperity: int = 0
+    activation_prosperity: int = 0
+    card_prosperity: int = 0
+    storage_prosperity: int = 0
+    tag_prosperity: int = 0
     prosperity_base: int = 0
+    problem_penalty: int = 0
+    prosperity_pool_before_problems: int = 0
+    prosperity_pool_after_problems: int = 0
+    prosperity_delta: int = 0
     shields: list[ShieldSpec] = field(default_factory=list)
     bonus_draws: int = 0
 
@@ -250,7 +275,14 @@ class RoundRecord:
     unblocked_by_problem: Mapping[str, int]
     penalty_by_problem: Mapping[str, int]
     problem_penalty: int
+    base_prosperity: int
+    activation_prosperity: int
+    card_prosperity: int
+    storage_prosperity: int
+    tag_prosperity: int
     prosperity_base: int
+    prosperity_pool_before_problems: int
+    prosperity_pool_after_problems: int
     prosperity_delta: int
     score_before: int
     score_after_prosperity: int

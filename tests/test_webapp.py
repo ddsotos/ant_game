@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+from ant_game.content import TRAIT_BY_ID
 from ant_game.engine import PROBLEM_IDS, InvalidDecision
 from ant_game.models import PlayedCard, ShieldSpec
 from ant_game.webapp import RequestHandler, WebGameService
@@ -65,7 +66,10 @@ def test_live_projection_includes_activated_shields_and_round_prosperity_delta()
     assert raid["shield"] == 2
     assert raid["unblocked"] == max(0, raid["roll"] - 2)
     assert state["round_prosperity_base"] == 5
-    assert state["round_prosperity_delta"] == 5
+    gain = state["round_gain_breakdown"]
+    assert gain["base"] == 5
+    assert gain["pool_before_problems"] == 5
+    assert state["round_prosperity_delta"] == gain["delta"]
     assert state["round_prosperity_multiplier"] == 1
 
 
@@ -126,7 +130,8 @@ def test_browser_service_resolves_one_round_and_exposes_audit_trail():
     service.act(game_id, "retain", {"card_ids": []})
     result = service.act(game_id, "resolve", {})
     resolved = result["state"]["last_result"]
-    assert resolved["score_after_problems"] == max(0, resolved["score_after_prosperity"] - resolved["problem_penalty"])
+    assert resolved["score_after_problems"] == resolved["score_after_prosperity"]
+    assert resolved["gain_breakdown"]["pool_after_problems"] == max(0, resolved["gain_breakdown"]["pool_before_problems"] - resolved["problem_penalty"])
     assert all(problem["raw_rolls"] for problem in resolved["problems"])
     assert result["state"]["round"] == 2
 
@@ -146,7 +151,14 @@ def test_card_effects_and_conditions_are_structured_data():
             assert {"text", "prosperity", "draw_cards", "shields", "retention_bonus", "store_hand_card", "storage_income_per_card", "tag_prosperity"} <= set(option)
 
 
-def test_real_http_server_serves_v05_page_and_rejects_non_object_json():
+def test_specialist_tag_multiplicity_is_exposed_to_the_browser():
+    service = WebGameService()
+    card = service._card_data(TRAIT_BY_ID["oecophylla_silkworks"], "test")
+    nesting = next(tag for tag in card["tags"] if tag["id"] == "Nesting")
+    assert nesting["count"] == 2
+
+
+def test_real_http_server_serves_v09_page_and_rejects_non_object_json():
     server = ThreadingHTTPServer(("127.0.0.1", 0), RequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -157,6 +169,8 @@ def test_real_http_server_serves_v05_page_and_rejects_non_object_json():
             assert 'lang="ja"' in page
             assert "symbol-linked-ants" in page
             assert 'id="environment"' not in page
+        with urlopen(base + "/app.js", timeout=2) as response:
+            assert "今ラウンドの繁栄・シールド" in response.read().decode("utf-8")
         with urlopen(base + "/style.css", timeout=2) as response:
             css = response.read().decode("utf-8")
             assert "min-height:44px" in css

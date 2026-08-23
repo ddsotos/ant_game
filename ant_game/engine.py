@@ -175,11 +175,12 @@ class GameEngine:
             problem_selected_rolls=selected_rolls,
             problem_modifiers=modifiers,
             size_before=state.size,
+            base_prosperity=5,
             prosperity_base=5,
         )
         # Stored cards start paying only from the round after they are
         # attached, so income is booked when this round opens.
-        state.current_round.prosperity_base += self.storage_income(state)
+        self._add_prosperity(state, self.storage_income(state), source="storage")
         state.phase = RoundPhase.SIZE
         return disaster
 
@@ -350,11 +351,6 @@ class GameEngine:
         assert state.current_round is not None
         context = state.current_round
         disaster = self.current_disaster(state)
-        score_before = state.prosperity
-        prosperity_delta = context.prosperity_base * state.size.prosperity_multiplier
-        state.prosperity += prosperity_delta
-        score_after_prosperity = state.prosperity
-
         defense_by_problem: dict[str, int] = {}
         unblocked_by_problem: dict[str, int] = {}
         penalty_by_problem: dict[str, int] = {}
@@ -366,7 +362,21 @@ class GameEngine:
             unblocked_by_problem[problem] = unblocked
             penalty_by_problem[problem] = penalty
         problem_penalty = sum(penalty_by_problem.values())
-        state.prosperity = max(0, state.prosperity - problem_penalty)
+        # Problems tax this round's unmultiplied prosperity pool first.  Only
+        # the surviving pool is then amplified by colony size; a disaster
+        # cannot erase prosperity earned in earlier rounds.
+        score_before = state.prosperity
+        prosperity_pool_before = context.prosperity_base
+        prosperity_pool_after = max(0, prosperity_pool_before - problem_penalty)
+        prosperity_delta = prosperity_pool_after * state.size.prosperity_multiplier
+        context.problem_penalty = problem_penalty
+        context.prosperity_pool_before_problems = prosperity_pool_before
+        context.prosperity_pool_after_problems = prosperity_pool_after
+        context.prosperity_delta = prosperity_delta
+        state.prosperity += prosperity_delta
+        score_after_prosperity = state.prosperity
+        # Kept as a named record field for clients that used the old audit
+        # shape.  Problems have already been applied to the round pool above.
         score_after_problems = state.prosperity
 
         actual_tags = self.board_tags(state)
@@ -416,7 +426,14 @@ class GameEngine:
             unblocked_by_problem=unblocked_by_problem,
             penalty_by_problem=penalty_by_problem,
             problem_penalty=problem_penalty,
+            base_prosperity=context.base_prosperity,
+            activation_prosperity=context.activation_prosperity,
+            card_prosperity=context.card_prosperity,
+            storage_prosperity=context.storage_prosperity,
+            tag_prosperity=context.tag_prosperity,
             prosperity_base=context.prosperity_base,
+            prosperity_pool_before_problems=prosperity_pool_before,
+            prosperity_pool_after_problems=prosperity_pool_after,
             prosperity_delta=prosperity_delta,
             score_before=score_before,
             score_after_prosperity=score_after_prosperity,
@@ -469,7 +486,7 @@ class GameEngine:
         self._validate_column(column_index)
         tags: Counter[str] = Counter()
         for played in state.columns[column_index].cards:
-            tags.update(self.traits[played.card_id].root_tags)
+            tags.update(self.traits[played.card_id].counted_root_tags)
         return tags
 
     def activation_tags(self, state: GameState, column_index: int) -> Counter[str]:
@@ -478,7 +495,7 @@ class GameEngine:
         self._validate_column(column_index)
         tags: Counter[str] = Counter()
         for played in state.columns[column_index].cards[:-1]:
-            tags.update(self.traits[played.card_id].root_tags)
+            tags.update(self.traits[played.card_id].counted_root_tags)
         return tags
 
     def board_tags(self, state: GameState) -> Counter[str]:
@@ -547,9 +564,25 @@ class GameEngine:
         if card.role is not CardRole.ON_PLAY or not card.options:
             return
         assert state.current_round is not None
-        self._apply_option(card.options[0], state)
+        self._apply_option(card.options[0], state, source="card")
 
-    def _apply_option(self, option: ActionOption, state: GameState) -> int:
+    def _add_prosperity(self, state: GameState, amount: int, *, source: str) -> None:
+        assert state.current_round is not None
+        if amount <= 0:
+            return
+        state.current_round.prosperity_base += amount
+        if source == "activation":
+            state.current_round.activation_prosperity += amount
+        elif source == "card":
+            state.current_round.card_prosperity += amount
+        elif source == "storage":
+            state.current_round.storage_prosperity += amount
+        elif source == "tag":
+            state.current_round.tag_prosperity += amount
+        else:
+            raise ValueError(f"unknown prosperity source: {source}")
+
+    def _apply_option(self, option: ActionOption, state: GameState, *, source: str = "activation") -> int:
         """Apply an option and return its resolved prosperity contribution.
 
         Tag-scaled prosperity is evaluated against the complete board at the
@@ -563,8 +596,9 @@ class GameEngine:
             for tag, coefficient in option.tag_prosperity
         )
         tag_bonus = min(tag_bonus, option.tag_prosperity_cap)
+        self._add_prosperity(state, option.prosperity, source=source)
+        self._add_prosperity(state, tag_bonus, source="tag")
         prosperity = option.prosperity + tag_bonus
-        state.current_round.prosperity_base += prosperity
         state.current_round.shields.extend(option.shields)
         state.current_round.bonus_draws += option.draw_cards
         state.pending_retention_bonus = min(2, state.pending_retention_bonus + option.retention_bonus)

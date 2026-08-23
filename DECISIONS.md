@@ -430,3 +430,22 @@ Why:
 The v0.7 baseline made many successful Payoffs feel numerically close to ordinary cards and made the first Small rounds scoreless. A strong conditional contribution creates a visible reason to build a column, while delayed storage converts a card into future prosperity at the cost of immediate flexibility. The cap on board-tag prosperity prevents a single dense tag from becoming an automatic choice.
 
 This is still a human-play implementation baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+
+## D-022 — v0.9: subtract problems before size and specialize foundations
+
+Date: 2026-08-23
+
+Accepted by direct user request:
+
+- Subtract raid and sanitation penalties from the current round's unmultiplied prosperity pool, floor it at zero, then apply the size multiplier. Earlier-round score is protected; a failed Optimization still halves total score afterward.
+- Show the live round breakdown beside the evolution columns: starting five, activations, other card effects, storage, tag rewards, shields, problem deduction, and multiplied gain.
+- Rename player-facing “base prosperity” to simply “prosperity.”
+- Raise every stored card's delayed income from one to three prosperity.
+- Set total-two Payoffs to prosperity three plus their rider, while total-four Payoffs retain prosperity five plus a stronger rider.
+- Allow a biology-justified specialist card to supply two copies of one printed root tag. Use one specialist foundation for each root rather than adding a new resource or subsystem.
+
+Why:
+
+Problem damage should interact with the current size decision instead of erasing prior progress after multiplication. Requirement-two and requirement-four cards need visibly different reward tiers. Double-root foundations give otherwise modest cards a durable construction role without adding bespoke card text, and delayed storage at three makes sacrificing a hand card worth considering in a five-round game.
+
+This remains an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.

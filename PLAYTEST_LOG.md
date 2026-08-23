@@ -1016,3 +1016,23 @@ Not applicable: this is a requested content/rules implementation, not a balance 
 ### Design status
 
 The stronger Payoff numbers and delayed storage are hypotheses. The next human session should specifically compare taking an immediate +5 Payoff against keeping the card needed for a future storage income, and check whether board-tag bonuses remain attractive without becoming automatic.
+
+## v0.9 Human-play implementation baseline — pre-multiplier problems and specialist roots
+
+### Rules/content changes
+
+- Current-round prosperity is now reduced by raid and sanitation before the size multiplier. Previously earned score is unaffected; Optimization failure still halves the resulting total.
+- The browser shows a live breakdown beside the evolution columns for starting prosperity, activations, other card effects, storage, tag rewards, shields, problem deduction, and multiplied gain.
+- Player-facing “base prosperity” wording was shortened to “prosperity.”
+- Stored cards now produce three prosperity per round beginning on the following round.
+- All nine requirement-total-two Payoffs were reduced from prosperity five to prosperity three. Requirement-total-four Payoffs remain at prosperity five.
+- Five biology-specific foundation/bridge cards now supply two copies of their defining root: nesting, resource ecology, morphology, chemistry, or sociality. The UI prints the multiplicity as ×2.
+- ツムギアリの絹建築 and 黒庭アリの密閉創設 were also raised from prosperity one to two so they are not merely weaker versions of later completed adaptations.
+
+### Verification boundary
+
+Only rule, content, browser API, compilation, syntax, and HTTP startup checks are permitted for this delivery. NPC batches, strategy comparison, representative-game analysis, and human playtest were not run.
+
+### Design status
+
+The new reward ladder, pre-multiplier penalty, storage value, and double-root foundations are implementation hypotheses awaiting the player's session. This iteration does not count toward `promising`.

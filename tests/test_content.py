@@ -132,24 +132,41 @@ def test_storage_cards_do_not_grant_shields() -> None:
     cards = {card.id: card for card in TRAITS}
     assert all(not any(option.shields for option in cards[card_id].options) for card_id in storage_ids)
     assert all(
-        any(getattr(option, "store_hand_card", False) and getattr(option, "storage_income_per_card", 0) == 1 for option in cards[card_id].options)
+        any(getattr(option, "store_hand_card", False) and getattr(option, "storage_income_per_card", 0) == 3 for option in cards[card_id].options)
         for card_id in storage_ids
     )
 
 
 def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> None:
     cards = {card.id: card for card in TRAITS}
-    strong_payoffs = {
+    four_requirement_payoffs = {
         "cephalotes_living_gate", "pheidole_supermajor_program", "megaponera_field_medicine",
         "colobopsis_last_defense", "acromyrmex_antibiotic_garden", "pheidole_raid_wall",
-        "oecophylla_living_chain", "cataglyphis_sky_compass", "diacamma_gemma_inheritance",
-        "ooceraea_synchronized_brood", "mycocepurus_clonal_garden", "cardiocondyla_dual_males",
-        "pristomyrmex_worker_queens",
+        "pheidole_seed_miller", "paraponera_poneratoxin", "pogonomyrmex_granary",
+        "solenopsis_dry_store",
     }
-    assert all(max(option.prosperity for option in cards[card_id].options) >= 5 for card_id in strong_payoffs)
+    two_requirement_payoffs = {
+        card.id for card in TRAITS
+        if card.design_role == "Payoff" and sum(card.activation_requirements.values()) == 2
+    }
+    assert all(max(option.prosperity for option in cards[card_id].options) == 5 for card_id in four_requirement_payoffs)
+    assert all(max(option.prosperity for option in cards[card_id].options) == 3 for card_id in two_requirement_payoffs)
     assert cards["pheidole_seed_miller"].options[0].tag_prosperity
     assert cards["mycocepurus_clonal_garden"].options[0].tag_prosperity
     assert cards["diacamma_gemma_inheritance"].options[0].retention_bonus == 1
+
+
+def test_specialized_foundations_can_supply_two_copies_of_one_root() -> None:
+    cards = {card.id: card for card in TRAITS}
+    expected = {
+        "oecophylla_silkworks": ("Nesting", 2),
+        "atta_fungus_garden": ("Resource Ecology", 2),
+        "cataglyphis_silver_hair": ("Morphology", 2),
+        "cataglyphis_heatshock_proteins": ("Chemistry", 2),
+        "platythyrea_clone_watch": ("Sociality", 2),
+    }
+    for card_id, (tag, count) in expected.items():
+        assert cards[card_id].counted_root_tags[tag] == count
 
 
 def test_optimization_names_are_player_facing_japanese() -> None:

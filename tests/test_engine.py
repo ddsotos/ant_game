@@ -12,6 +12,7 @@ from ant_game.models import (
     CardRole,
     EnvironmentCard,
     OptimizationRequirement,
+    PlayedCard,
     ProblemRollRule,
     RoundDecision,
     RoundPhase,
@@ -119,6 +120,18 @@ def test_size_multipliers_have_a_nonzero_base_and_round_base_is_five():
     assert state.current_round.prosperity_base == 5
 
 
+def test_root_tag_multiplicity_counts_for_columns_and_optimizations():
+    specialist = TraitCard(
+        "specialist", "Specialist", frozenset({"Chemistry"}), CardRole.ACTION,
+        root_tag_counts={"Chemistry": 2},
+    )
+    game = GameEngine(cards() + [specialist], disasters(), seed=11)
+    state = game.new_game()
+    state.columns[0].cards.append(PlayedCard("specialist", "specialist"))
+    assert game.column_tags(state, 0)["Chemistry"] == 3  # starter 1 + specialist 2
+    assert game.board_tags(state)["Chemistry"] == 3
+
+
 def test_retention_bonus_is_consumed_by_the_next_round_only():
     bonus_card = TraitCard(
         "retention", "Retention", frozenset({"Resource Ecology"}),
@@ -156,6 +169,7 @@ def test_storage_card_pays_from_next_round_and_is_discarded_with_host():
     game.resolve_environment(state)
     game.start_round(state)
     assert state.current_round.prosperity_base == 7
+    assert state.current_round.storage_prosperity == 2
     game.choose_size(state, Size.SMALL)
     game.retain_cards(state, ())
     state.hand.append(CardInstance("f1", "f1"))
@@ -189,6 +203,11 @@ def test_activation_excludes_top_cards_own_tags_but_counts_support_below_it():
     game.insert_support(state, "support", 1)
     game.activate(state, 1)
     assert state.current_round.prosperity_base == 7
+    assert state.current_round.base_prosperity == 5
+    assert state.current_round.activation_prosperity == 2
+    assert state.current_round.card_prosperity == 0
+    assert state.current_round.storage_prosperity == 0
+    assert state.current_round.tag_prosperity == 0
 
 
 def test_activation_requirements_do_not_use_other_columns():
@@ -212,7 +231,7 @@ def test_starters_remain_immediately_activatable_and_draw_is_immediate():
     assert "retention_bonus" in {item.name for item in fields(ActionOption)}
 
 
-def test_resolve_order_is_prosperity_then_exponential_penalty_then_floor_half():
+def test_resolve_order_is_problem_penalty_then_size_multiplier_then_floor_half():
     game = GameEngine(
         cards(),
         disasters(),
@@ -229,16 +248,18 @@ def test_resolve_order_is_prosperity_then_exponential_penalty_then_floor_half():
 
     record = game.resolve_environment(state)
 
-    assert record.prosperity_delta == 14
-    assert record.score_after_prosperity == 114
+    assert record.prosperity_delta == 0
+    assert record.score_after_prosperity == 100
     assert record.defense_by_problem == {"raid": 1, "sanitation": 0}
     assert record.unblocked_by_problem == {"raid": 2, "sanitation": 2}
     assert record.penalty_by_problem == {"raid": 4, "sanitation": 4}
     assert record.problem_penalty == 8
-    assert record.score_after_problems == 106
+    assert record.score_after_problems == 100
     assert record.optimization_met is False
-    assert record.optimization_half_loss == 53
-    assert record.total_prosperity == state.prosperity == 53
+    assert record.optimization_half_loss == 50
+    assert record.total_prosperity == state.prosperity == 50
+    assert record.prosperity_pool_before_problems == 7
+    assert record.prosperity_pool_after_problems == 0
 
 
 def test_fully_defended_problem_has_zero_penalty_and_shields_expire():

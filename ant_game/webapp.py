@@ -110,6 +110,12 @@ class WebGameService:
         shields = self._shield_totals(context) if context else {}
         round_base = context.prosperity_base if context else 0
         round_multiplier = state.size.prosperity_multiplier
+        live_penalty = self._live_problem_penalty(context, shields) if context else 0
+        gain_breakdown = self._gain_breakdown(context, round_multiplier, live_penalty) if context else {
+            "base": 0, "activation": 0, "card": 0, "storage": 0, "tag": 0,
+            "pool_before_problems": 0, "problem_penalty": 0,
+            "pool_after_problems": 0, "multiplier": round_multiplier, "delta": 0,
+        }
         return {
             "phase": state.phase.value, "finished": state.finished,
             "round": context.round_number if context else state.round_number,
@@ -121,7 +127,8 @@ class WebGameService:
             "pending_retention_bonus": state.pending_retention_bonus,
             "round_prosperity_base": round_base,
             "round_prosperity_multiplier": round_multiplier,
-            "round_prosperity_delta": round_base * round_multiplier,
+            "round_prosperity_delta": gain_breakdown["delta"],
+            "round_gain_breakdown": gain_breakdown,
             "forecast": [self._forecast_data(engine, state, i) for i in range(len(state.disaster_ids))],
             "environment": {**self._environment_data(environment), "optimizations": optimization["optimizations"], "optimization_met": optimization["met"]},
             "optimizations": optimization["optimizations"],
@@ -161,6 +168,32 @@ class WebGameService:
             for problem in PROBLEM_IDS
         }
 
+    @classmethod
+    def _live_problem_penalty(cls, context: Any, shields: Mapping[str, int]) -> int:
+        total = 0
+        for problem in PROBLEM_IDS:
+            roll = context.problem_rolls.get(problem, 0)
+            unblocked = max(0, roll - shields.get(problem, 0))
+            total += 0 if unblocked == 0 else 2 ** unblocked
+        return total
+
+    @staticmethod
+    def _gain_breakdown(context: Any, multiplier: int, problem_penalty: int) -> dict[str, int]:
+        pool_before = context.prosperity_base
+        pool_after = max(0, pool_before - problem_penalty)
+        return {
+            "base": context.base_prosperity,
+            "activation": context.activation_prosperity,
+            "card": context.card_prosperity,
+            "storage": context.storage_prosperity,
+            "tag": context.tag_prosperity,
+            "pool_before_problems": pool_before,
+            "problem_penalty": problem_penalty,
+            "pool_after_problems": pool_after,
+            "multiplier": multiplier,
+            "delta": pool_after * multiplier,
+        }
+
     def _hand_card_data(self, engine: GameEngine, state: GameState, instance: Any) -> dict[str, Any]:
         data = self._card_data(engine.traits[instance.card_id], instance.instance_id)
         data["placement_options"] = [self._placement_option_data(engine, state, i, engine.traits[instance.card_id]) for i in range(len(state.columns))]
@@ -170,7 +203,7 @@ class WebGameService:
         existing = list(state.columns[index].cards)
         if len(existing) >= engine.column_capacity: existing = existing[1:]
         tags: Counter[str] = Counter()
-        for played in existing: tags.update(engine.traits[played.card_id].root_tags)
+        for played in existing: tags.update(engine.traits[played.card_id].counted_root_tags)
         missing = sum(max(0, required - tags.get(tag, 0)) for tag, required in card.activation_requirements.items())
         return {"column": index, "status": "ready" if missing == 0 else "one-short" if missing == 1 else "other", "requirements": self._requirements_data(card.activation_requirements, tags), "fallback": bool(card.fallback_options)}
 
@@ -233,7 +266,7 @@ class WebGameService:
         return {"index": index, "name": f"進化列 {index + 1}", "cards": cards, "tags": [self._tag_data(tag, count) for tag, count in sorted(all_tags.items()) if tag in TAG_INFO], "activation_tags": [self._tag_data(tag, count) for tag, count in sorted(activation_tags.items()) if tag in TAG_INFO], "capacity": engine.column_capacity, "next_pushed": card_name(column.cards[0].card_id, column.cards[0].card_id) if len(column.cards) >= engine.column_capacity else None, "activations": activations}
 
     def _card_data(self, card: TraitCard, instance_id: str) -> dict[str, Any]:
-        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "subject_taxon": card.source_taxon, "biology_basis": card.biology_basis, "biology_source": card.biology_source, "tags": [self._tag_data(tag) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": ROLE_NAMES.get(card.design_role, card.design_role), "options": [self._option_data(option) for option in card.options], "fallback_options": [self._option_data(option) for option in card.fallback_options]}
+        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "subject_taxon": card.source_taxon, "biology_basis": card.biology_basis, "biology_source": card.biology_source, "tags": [self._tag_data(tag, card.counted_root_tags[tag]) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": ROLE_NAMES.get(card.design_role, card.design_role), "options": [self._option_data(option) for option in card.options], "fallback_options": [self._option_data(option) for option in card.fallback_options]}
 
     @staticmethod
     def _option_data(option: ActionOption) -> dict[str, Any]:
@@ -253,7 +286,8 @@ class WebGameService:
     def _result_data(cls, engine: GameEngine, record: Any) -> dict[str, Any]:
         environment = engine.disasters[record.disaster_id]
         labels = cls._optimization_labels(environment)
-        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [cls._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "optimizations": [{"name": labels[index] if index < len(labels) else f"最適化{index + 1}", "requirements": cls._requirements_data_static(req), "met": record.optimization_results[index]} for index, req in enumerate(record.optimization_requirements)], "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "total_prosperity": record.total_prosperity}
+        gain_breakdown = {"base": record.base_prosperity, "activation": record.activation_prosperity, "card": record.card_prosperity, "storage": record.storage_prosperity, "tag": record.tag_prosperity, "pool_before_problems": record.prosperity_pool_before_problems, "problem_penalty": record.problem_penalty, "pool_after_problems": record.prosperity_pool_after_problems, "multiplier": record.size.prosperity_multiplier, "delta": record.prosperity_delta}
+        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [cls._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "gain_breakdown": gain_breakdown, "optimizations": [{"name": labels[index] if index < len(labels) else f"最適化{index + 1}", "requirements": cls._requirements_data_static(req), "met": record.optimization_results[index]} for index, req in enumerate(record.optimization_requirements)], "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "total_prosperity": record.total_prosperity}
 
     @classmethod
     def _problem_result(cls, record: Any, problem: str) -> dict[str, Any]:
@@ -273,7 +307,7 @@ def japanese_error(exc: Exception) -> str:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.8"
+    server_version = "AntGame/0.9"
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/config": self._json(SERVICE.config())

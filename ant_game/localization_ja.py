@@ -128,7 +128,7 @@ CARD_TEXTS = {
     "lasius_sealed_foundation": "女王が最初の巣室を閉じ、蓄えだけで初期ワーカーを育てる。",
     "diacamma_gemma_inheritance": "胸のジェンマを保ったワーカーが次の繁殖個体となり、次の保持余力も残す。",
     "platythyrea_clone_watch": "クローンのワーカーが、同じ繁殖系統の幼虫を守り続ける。",
-    "ooceraea_synchronized_brood": "繁殖相と採餌相を同期し、カードと次ラウンドの保持余力を同時に得る。",
+    "ooceraea_synchronized_brood": "繁殖相と採餌相を同期し、次の採餌期に使える選択肢を見つける。",
     "mycocepurus_clonal_garden": "無性生殖のワーカーが菌園を安定して育て、資源生態の厚みを繁栄へ変える。",
     "cardiocondyla_dual_males": "巣に残る雄と飛び立つ雄を使い分け、繁栄か新しい選択肢へ転じる。",
     "vollenhovia_three_lineage": "異なる三つの系統を、ひとつの社会の中で維持する。",
@@ -168,15 +168,15 @@ def shield_text(shield: ShieldSpec) -> str:
 def option_text(option: ActionOption) -> str:
     parts: list[str] = []
     if option.prosperity:
-        parts.append(f"基礎繁栄 +{option.prosperity}")
+        parts.append(f"繁栄 +{option.prosperity}")
     parts.extend(shield_text(shield) for shield in option.shields)
     if option.draw_cards:
         parts.append(f"カードを今すぐ{option.draw_cards}枚引く")
     if option.retention_bonus:
         parts.append(f"次ラウンドの保持上限 +{option.retention_bonus}")
     for tag, coefficient in option.tag_prosperity:
-        parts.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに基礎繁栄 +{coefficient}")
+        parts.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに繁栄 +{coefficient}")
     if getattr(option, "store_hand_card", False):
         income = getattr(option, "storage_income_per_card", 0)
-        parts.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド基礎繁栄 +{income}）")
+        parts.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド繁栄 +{income}）")
     return "／".join(parts) or "数値効果なし"

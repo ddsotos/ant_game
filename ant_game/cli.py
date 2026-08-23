@@ -236,7 +236,7 @@ class HumanPolicy:
     def _option_summary(option) -> str:
         effects = []
         if option.prosperity:
-            effects.append(f"基礎繁栄+{option.prosperity}")
+            effects.append(f"繁栄+{option.prosperity}")
         for shield in option.shields:
             effects.append(
                 f"{('襲撃' if shield.problem_id == 'raid' else '衛生' if shield.problem_id == 'sanitation' else shield.problem_id)}シールド+{shield.amount}"
@@ -246,10 +246,10 @@ class HumanPolicy:
         if option.retention_bonus:
             effects.append(f"次ラウンド保持+{option.retention_bonus}")
         for tag, coefficient in option.tag_prosperity:
-            effects.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに基礎繁栄+{coefficient}")
+            effects.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに繁栄+{coefficient}")
         if getattr(option, "store_hand_card", False):
             income = getattr(option, "storage_income_per_card", 0)
-            effects.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド基礎繁栄+{income}）")
+            effects.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド繁栄+{income}）")
         return " / ".join(effects) or "数値効果なし"
 
 
@@ -270,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.8 — 5ラウンド試作")
+    print("アリ進化ゲーム v0.9 — 5ラウンド試作")
     print("開始時に全5ラウンドの環境と、複数最適化または問題強化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)
