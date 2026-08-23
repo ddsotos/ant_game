@@ -424,6 +424,30 @@ def test_environment_roll_rule_preserves_raw_selected_and_modified_values():
     assert context.problem_rolls["raid"] == context.problem_selected_rolls["raid"] + 2
 
 
+def test_environment_roll_rule_can_sum_multiple_d4s_for_finale_intensity():
+    special = EnvironmentCard(
+        "d0",
+        "Finale Intensity",
+        (optimization(),),
+        {"raid": ProblemRollRule(rolls=2, combine="sum")},
+    )
+    game = GameEngine(cards(), [special, *disasters()[1:]], seed=11)
+    state = game.new_game()
+    force_first_disaster(game, state)
+    game.start_round(state)
+    context = state.current_round
+    assert context is not None
+    assert len(context.problem_raw_rolls["raid"]) == 2
+    assert context.problem_selected_rolls["raid"] == sum(context.problem_raw_rolls["raid"])
+    assert context.problem_rolls["raid"] == context.problem_selected_rolls["raid"]
+
+
+def test_problem_roll_combine_defaults_to_highest_and_rejects_unknown_mode():
+    assert ProblemRollRule(rolls=2).combine == "highest"
+    with pytest.raises(ValueError, match="highest.*sum"):
+        ProblemRollRule(combine="average")
+
+
 def test_two_optimizations_use_or_and_empty_optimization_skips_half_loss():
     first = EnvironmentCard(
         "d0",
@@ -467,3 +491,52 @@ def test_unmet_requirements_use_fallback_effect_and_log_tier():
     assert option.prosperity == 1
     assert state.current_round is not None
     assert state.current_round.action_log[-1]["tier"] == "fallback"
+
+
+def test_tag_prosperity_is_uncapped_by_default_and_supports_floor_division():
+    uncapped = TraitCard(
+        "uncapped_tag", "Uncapped", frozenset({"Sociality"}), CardRole.ACTION,
+        {}, (ActionOption(tag_prosperity=(("Sociality", 4),)),),
+    )
+    divided = TraitCard(
+        "divided_tag", "Divided", frozenset({"Sociality"}), CardRole.ACTION,
+        {}, (ActionOption(tag_prosperity=(("Sociality", 4),), tag_prosperity_divisor=3),),
+    )
+    game = GameEngine(cards() + [uncapped, divided], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("uncapped_tag",))
+    game.play_card(state, "uncapped_tag", 2)
+    game.activate(state, 2)
+    # The social starter plus the card itself gives two Sociality copies.
+    assert state.current_round.tag_prosperity == 8
+
+    state2 = game.new_game()
+    begin(game, state2, retain=("divided_tag",))
+    game.play_card(state2, "divided_tag", 2)
+    game.activate(state2, 2)
+    assert state2.current_round.tag_prosperity == 2
+
+
+def test_tag_prosperity_cap_is_optional_and_validated():
+    assert ActionOption(tag_prosperity_cap=None).tag_prosperity_cap is None
+    assert ActionOption(tag_prosperity_cap=3).tag_prosperity_cap == 3
+    with pytest.raises(ValueError):
+        ActionOption(tag_prosperity_cap=-1)
+    with pytest.raises(ValueError):
+        ActionOption(tag_prosperity_divisor=0)
+
+
+def test_finale_environment_is_seeded_into_round_five():
+    standard = [EnvironmentCard(f"s{i}", f"Standard {i}") for i in range(6)]
+    finale = [EnvironmentCard("f0", "Finale 0", deck="finale"), EnvironmentCard("f1", "Finale 1", deck="finale")]
+    first = GameEngine(cards(), [*standard, *finale], seed=19).new_game()
+    second = GameEngine(cards(), [*standard, *finale], seed=19).new_game()
+    assert first.disaster_ids == second.disaster_ids
+    assert len(first.disaster_ids) == 5
+    assert all(card_id.startswith("s") for card_id in first.disaster_ids[:4])
+    assert first.disaster_ids[4] in {"f0", "f1"}
+
+
+def test_invalid_environment_deck_is_rejected():
+    with pytest.raises(ValueError, match="standard.*finale"):
+        EnvironmentCard("bad", "Bad", deck="bonus")

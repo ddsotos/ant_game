@@ -1058,3 +1058,27 @@ Not applicable: this is a requested human-play implementation baseline, not a ba
 ### Design status
 
 Recovery, preview, the storage alternative, narrowed Payoff tags, and uncapped forecasted raid escalation are hypotheses awaiting the player's session. This iteration does not count toward `promising`.
+
+## v0.11 Human-play implementation baseline — root diversity and round-five finale
+
+### Rules/content changes
+
+- The normal deck grows from 40 to 60 cards with twenty real-ant adaptations: Chemistry 8, Morphology 8, Resource Ecology 2, Sociality 1, and Nesting 1.
+- The complete 60-card weighted printed-root distribution is Chemistry 19, Morphology 17, Sociality 17, Resource Ecology 12, and Nesting 8. Weighted activation requirements are Nesting 17, Sociality 22, Morphology 20, Resource Ecology 16, and Chemistry 14; Chemistry rose from 4 and Morphology from 7.
+- Every card supplies at most two root icons; every Payoff supplies exactly one and requires none of its own printed root.
+- Unconditional single-root cards receive stronger actions. Harpegnathos now offers prosperity two or prosperity one plus lower-card recovery. The Matabele termite raid retains its action choices but supplies only Sociality.
+- Board-tag prosperity has no default ceiling. Optional floor division controls scaling when needed.
+- Four standard environments are followed by one publicly forecast finale environment in round five. Finale optimizations ask for a single root at eight and also strengthen raid and sanitation.
+- Japanese flavor text describes the actual ant trait and no longer explains hand, retention, prosperity, draw, shield, or round operations.
+
+### Verification boundary
+
+Only deterministic rule, content-invariant, browser API, compilation, syntax, and HTTP checks are authorized for this delivery. NPC simulations, strategy comparisons, representative-game analysis, and human playtest were not run.
+
+### Quantitative results
+
+These are static content distributions, not playtest outcomes. No win rates or gameplay balance claims are made.
+
+### Design status
+
+The new root distribution, uncapped scaling, stronger single-root baseline, and finale thresholds are implementation hypotheses awaiting the player's session. This iteration does not count toward `promising`.

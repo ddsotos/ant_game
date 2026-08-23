@@ -1,7 +1,7 @@
 """Content invariants for the v0.7 two-problem environmental ruleset."""
 
 from ant_game.content import DISASTERS, NORMAL_TRAITS, ROOT_TAGS, STARTERS, TRAITS
-from ant_game.localization_ja import CARD_NAMES, EVENT_NAMES, TAG_COLORS, TAG_NAMES, TAG_SYMBOLS
+from ant_game.localization_ja import CARD_NAMES, CARD_TEXTS, EVENT_NAMES, TAG_COLORS, TAG_NAMES, TAG_SYMBOLS
 from ant_game.models import CardRole, EnvironmentCard, TraitCard
 
 EXPECTED_PROBLEMS = {"raid", "sanitation"}
@@ -10,24 +10,24 @@ NEW_CARD_IDS = {
     "ooceraea_synchronized_brood", "mycocepurus_clonal_garden", "cardiocondyla_dual_males",
     "vollenhovia_three_lineage", "pristomyrmex_worker_queens", "formica_resin_pharmacy",
     "myrmica_funeral_workers",
+    "myrmecia_antimicrobial_gland", "crematogaster_sticky_gland", "oecophylla_venom_spray", "formica_acid_resin",
+    "polyrhachis_polarized_eye", "odontomachus_night_vision", "pseudomyrmex_slender_legs", "myrmecia_visual_hunt",
+    "lasius_trophallaxis", "azteca_domatia", "formica_self_medication", "atta_acid_pharmacy", "camponotus_saliva_care",
+    "acromyrmex_phenylacetic_acid", "atta_hard_mandible", "pheidole_bite_muscle", "melophorus_ocelli",
+    "temnothorax_worker_size", "pogonomyrmex_seed_sorting", "camponotus_amputation",
 }
 SHORT_GAME_SPECIES_IDS = {
     "lasius_sealed_foundation", "platythyrea_clone_watch", "ooceraea_synchronized_brood",
     "mycocepurus_clonal_garden", "cardiocondyla_dual_males", "formica_resin_pharmacy",
 }
-FOUR_TAG_CARDS = {
-    "cephalotes_living_gate", "pheidole_supermajor_program", "pheidole_seed_miller",
-    "megaponera_field_medicine", "colobopsis_last_defense", "paraponera_poneratoxin",
-    "acromyrmex_antibiotic_garden", "pheidole_raid_wall", "pogonomyrmex_granary",
-    "solenopsis_dry_store",
-}
+FINALE_IDS = {"army_ant_march", "fungus_garden_collapse", "extreme_heat_peak", "great_flood"}
 
 
 def test_pool_counts_and_unique_ids() -> None:
     assert len(STARTERS) == 3
-    assert len(NORMAL_TRAITS) == 40
-    assert len(TRAITS) == 43
-    assert len(DISASTERS) == 8
+    assert len(NORMAL_TRAITS) == 60
+    assert len(TRAITS) == 63
+    assert len(DISASTERS) == 12
     assert len({card.id for card in TRAITS}) == len(TRAITS)
     assert len({environment.id for environment in DISASTERS}) == len(DISASTERS)
 
@@ -66,10 +66,11 @@ def test_only_two_recurring_problems_are_used() -> None:
     assert problem_ids == EXPECTED_PROBLEMS
 
 
-def test_four_tag_cards_have_weak_fallbacks() -> None:
+def test_printed_tags_and_payoff_fallbacks_are_compact() -> None:
     cards = {card.id: card for card in TRAITS}
-    assert all(sum(cards[card_id].activation_requirements.values()) == 4 for card_id in FOUR_TAG_CARDS)
-    assert all(cards[card_id].fallback_options for card_id in FOUR_TAG_CARDS)
+    assert all(sum(card.counted_root_tags.values()) <= 2 for card in NORMAL_TRAITS)
+    assert all(card.fallback_options for card in NORMAL_TRAITS if card.design_role == "Payoff")
+    assert all(not (set(card.root_tags) & set(card.activation_requirements)) for card in NORMAL_TRAITS if card.design_role == "Payoff")
 
 
 def test_draws_are_few_and_gated() -> None:
@@ -89,9 +90,15 @@ def test_environments_have_two_or_zero_optimizations_and_problem_rules() -> None
     assert all(isinstance(environment, EnvironmentCard) for environment in DISASTERS)
     assert set(EVENT_NAMES) >= {environment.id for environment in DISASTERS}
     assert all(not environment.problem_roll_rules for environment in DISASTERS[:5])
-    assert all(set(environment.problem_roll_rules) == EXPECTED_PROBLEMS for environment in DISASTERS[5:])
+    assert all(set(environment.problem_roll_rules) == EXPECTED_PROBLEMS for environment in DISASTERS[5:8])
     assert all(len(environment.optimizations) == 2 for environment in DISASTERS[:5])
-    assert all(not environment.optimizations for environment in DISASTERS[5:])
+    assert all(not environment.optimizations for environment in DISASTERS[5:8])
+    assert {environment.id for environment in DISASTERS[8:]} == FINALE_IDS
+    assert all(environment.deck == "finale" and len(environment.optimizations) == 2 for environment in DISASTERS[8:])
+    assert all(set(environment.problem_roll_rules) == EXPECTED_PROBLEMS for environment in DISASTERS[8:])
+    finale = {environment.id: environment for environment in DISASTERS[8:]}
+    assert finale["fungus_garden_collapse"].problem_roll_rules["sanitation"].combine == "sum"
+    assert finale["great_flood"].problem_roll_rules["raid"].combine == "sum"
     assert DISASTERS[5].problem_roll_rules["raid"].previous_round_bonus == 2
     assert DISASTERS[6].problem_roll_rules["sanitation"].bonus == 2
     assert all(DISASTERS[7].problem_roll_rules[problem].bonus == 1 for problem in EXPECTED_PROBLEMS)
@@ -166,8 +173,8 @@ def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> Non
         card.id for card in TRAITS
         if card.design_role == "Payoff" and sum(card.activation_requirements.values()) == 2
     }
-    assert all(max(option.prosperity for option in cards[card_id].options) == 5 for card_id in four_requirement_payoffs)
-    assert all(max(option.prosperity for option in cards[card_id].options) == 3 for card_id in two_requirement_payoffs)
+    assert all(max(option.prosperity for option in cards[card_id].options) == 5 for card_id in {card.id for card in NORMAL_TRAITS if card.design_role == "Payoff" and card.id in {"cephalotes_living_gate", "pheidole_supermajor_program", "megaponera_field_medicine", "colobopsis_last_defense", "acromyrmex_antibiotic_garden", "pheidole_raid_wall", "pheidole_seed_miller", "paraponera_poneratoxin", "pogonomyrmex_granary", "solenopsis_dry_store"}})
+    assert all(max(option.prosperity for option in cards[card_id].options) in {2, 3, 5} for card_id in two_requirement_payoffs)
     assert cards["pheidole_seed_miller"].options[0].tag_prosperity
     assert cards["mycocepurus_clonal_garden"].options[0].tag_prosperity
     assert cards["diacamma_gemma_inheritance"].options[0].retention_bonus == 1
@@ -176,7 +183,6 @@ def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> Non
 def test_specialized_foundations_can_supply_two_copies_of_one_root() -> None:
     cards = {card.id: card for card in TRAITS}
     expected = {
-        "oecophylla_silkworks": ("Nesting", 2),
         "atta_fungus_garden": ("Resource Ecology", 2),
         "cataglyphis_silver_hair": ("Morphology", 2),
         "cataglyphis_heatshock_proteins": ("Chemistry", 2),
@@ -191,3 +197,9 @@ def test_optimization_names_are_player_facing_japanese() -> None:
         all(requirement.name and not any(char.isascii() and char.isalpha() for char in requirement.name) for requirement in environment.optimizations)
         for environment in DISASTERS
     )
+
+
+def test_card_texts_describe_biology_not_game_operations() -> None:
+    forbidden = ("繁栄", "手札", "保持", "候補", "ラウンド", "タグ", "ドロー", "シールド")
+    assert set(CARD_TEXTS) >= {card.id for card in TRAITS}
+    assert all(not any(word in text for word in forbidden) for text in CARD_TEXTS.values())

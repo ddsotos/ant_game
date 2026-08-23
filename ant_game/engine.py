@@ -76,6 +76,10 @@ class GameEngine:
             raise ValueError("at least five disasters are required")
         if len(self.traits) != len(cards) or len(self.disasters) != len(disaster_list):
             raise ValueError("trait and disaster ids must be unique")
+        self.standard_disaster_ids = tuple(card.id for card in disaster_list if card.deck == "standard")
+        self.finale_disaster_ids = tuple(card.id for card in disaster_list if card.deck == "finale")
+        if self.finale_disaster_ids and len(self.standard_disaster_ids) < self.rounds - 1:
+            raise ValueError("a finale set requires at least four standard environments")
 
         if retention_curve == "aggressive":
             self.retention_curve = {size: size.retention for size in Size}
@@ -102,7 +106,16 @@ class GameEngine:
     # ------------------------------------------------------------------ setup
     def new_game(self) -> GameState:
         rng = random.Random(self.seed)
-        disaster_ids = tuple(rng.sample(tuple(self.disasters), self.rounds))
+        if self.finale_disaster_ids:
+            # Keep the finale physically last.  Sampling the two decks in a
+            # fixed order makes the complete forecast reproducible from seed.
+            standard_ids = tuple(rng.sample(self.standard_disaster_ids, self.rounds - 1))
+            finale_id = rng.choice(self.finale_disaster_ids)
+            disaster_ids = (*standard_ids, finale_id)
+        else:
+            # Backwards-compatible path for small test fixtures and callers
+            # that predate the standard/finale split.
+            disaster_ids = tuple(rng.sample(tuple(self.disasters), self.rounds))
         deck = [CardInstance(card_id, card_id) for card_id in self.normal_ids]
         rng.shuffle(deck)
         columns = [ColumnState() for _ in range(self.column_count)]
@@ -149,9 +162,10 @@ class GameEngine:
         rng = random.Random()
         rng.setstate(state.rng_state)
         # Independent problems are d4 by default.  An environment may make a
-        # problem more severe by rolling several d4s (keep the highest) or by
-        # adding a fixed bonus.  Preserve every part of this calculation for
-        # the UI/replay instead of only keeping the final number.
+        # problem more severe by rolling several d4s (keep the highest by
+        # default, or sum them for a finale) or by adding a fixed bonus.
+        # Preserve every part of this calculation for the UI/replay instead
+        # of only keeping the final number.
         rules = {
             problem: disaster.problem_roll_rules.get(problem, ProblemRollRule())
             for problem in PROBLEM_IDS
@@ -161,8 +175,10 @@ class GameEngine:
         modifiers: dict[str, int] = {}
         problem_rolls: dict[str, int] = {}
         roll_sources: dict[str, str] = {}
+        roll_combines: dict[str, str] = {}
         previous = state.history[-1].problem_rolls if state.history else {}
         for problem, rule in rules.items():
+            roll_combines[problem] = rule.combine
             if rule.previous_round_bonus is not None and problem in previous:
                 # Forecasted carry-over is deterministic and consumes no RNG.
                 raw_rolls[problem] = ()
@@ -174,7 +190,7 @@ class GameEngine:
             count = 1 if rule.previous_round_bonus is not None else rule.rolls
             raw = tuple(rng.randint(1, 4) for _ in range(count))
             raw_rolls[problem] = raw
-            selected_rolls[problem] = max(raw)
+            selected_rolls[problem] = sum(raw) if rule.combine == "sum" else max(raw)
             modifiers[problem] = rule.previous_round_bonus if rule.previous_round_bonus is not None else rule.bonus
             problem_rolls[problem] = selected_rolls[problem] + modifiers[problem]
             roll_sources[problem] = "d4_first_round" if rule.previous_round_bonus is not None else "dice"
@@ -187,6 +203,7 @@ class GameEngine:
             problem_selected_rolls=selected_rolls,
             problem_modifiers=modifiers,
             problem_roll_sources=roll_sources,
+            problem_roll_combines=roll_combines,
             size_before=state.size,
             base_prosperity=5,
             prosperity_base=5,
@@ -448,6 +465,7 @@ class GameEngine:
             problem_selected_rolls=dict(context.problem_selected_rolls),
             problem_modifiers=dict(context.problem_modifiers),
             problem_roll_sources=dict(context.problem_roll_sources),
+            problem_roll_combines=dict(context.problem_roll_combines),
             defense_by_problem=defense_by_problem,
             unblocked_by_problem=unblocked_by_problem,
             penalty_by_problem=penalty_by_problem,
@@ -637,11 +655,13 @@ class GameEngine:
         """
 
         assert state.current_round is not None
-        tag_bonus = sum(
+        tag_total = sum(
             self.board_tags(state).get(tag, 0) * coefficient
             for tag, coefficient in option.tag_prosperity
         )
-        tag_bonus = min(tag_bonus, option.tag_prosperity_cap)
+        tag_bonus = tag_total // option.tag_prosperity_divisor
+        if option.tag_prosperity_cap is not None:
+            tag_bonus = min(tag_bonus, option.tag_prosperity_cap)
         self._add_prosperity(state, option.prosperity, source=source)
         self._add_prosperity(state, tag_bonus, source="tag")
         prosperity = option.prosperity + tag_bonus

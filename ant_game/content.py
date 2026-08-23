@@ -78,10 +78,10 @@ STARTERS: tuple[TraitCard, ...] = (
 )
 
 
-# Forty normal cards. All are ACTION cards; strong options are gated by
+# Sixty normal cards. All are ACTION cards; strong options are gated by
 # accumulated roots rather than by new currencies or bespoke effect ids.
 _NORMAL_TRAITS_RAW: tuple[TraitCard, ...] = (
-    _action("oecophylla_silkworks", "Oecophylla Silkworks", frozenset({"Nesting", "Sociality"}), {}, (ActionOption(prosperity=2, text="Weave a protected canopy."),), "Oecophylla smaragdina", "Workers pull leaves together with silk produced by their larvae.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "Foundation", "Larval silk turns sociality into a living canopy nest.", root_tag_counts={"Nesting": 2}),
+    _action("oecophylla_silkworks", "Oecophylla Silkworks", frozenset({"Nesting", "Sociality"}), {}, (ActionOption(prosperity=2, text="Weave a protected canopy."),), "Oecophylla smaragdina", "Workers pull leaves together with silk produced by their larvae.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "Foundation", "Larval silk turns sociality into a living canopy nest."),
     _action("oecophylla_living_chain", "Oecophylla Living Chain", frozenset({"Sociality"}), {"Sociality": 2}, (ActionOption(prosperity=3, draw_cards=1, text="Form a chain and extend the route."),), "Oecophylla smaragdina", "Workers form pulling and bridging chains to move across gaps and bend leaves.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3997362/", "Payoff", "A chain is treated as coordinated social labor; the temporary route is its consequence.", (ActionOption(prosperity=1, text="Gather a small group at the route."),)),
     _action("cephalotes_aerialis", "Cephalotes Aerialis", frozenset({"Morphology"}), {}, (ActionOption(shields=(_shield("raid", amount=1),), text="Steer a fall away from a hunter."),), "Cephalotes atratus", "Wingless workers steer their descent while falling from the canopy.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2880152/", "Foundation", "The distinctive adaptation is a flattened, steerable body; descent is not a separate root."),
     _action("cephalotes_living_gate", "Cephalotes Living Gate", frozenset({"Morphology", "Nesting"}), {"Sociality": 3, "Nesting": 1}, (ActionOption(prosperity=5, shields=(_shield("raid", amount=3),), text="Seal the entrance with a shield-shaped head."),), "Cephalotes varians", "Soldiers use shield-shaped heads as living barricades at nest entrances.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6436684/", "Payoff", "A specialized social caste becomes a door for a narrow nest entrance.", (ActionOption(shields=(_shield("raid", amount=1),), text="Partly seal the entrance."),)),
@@ -109,7 +109,7 @@ _NORMAL_TRAITS_RAW: tuple[TraitCard, ...] = (
     _action("atta_leaf_cache", "Atta Leaf Cache", frozenset({"Resource Ecology"}), {"Nesting": 2}, (ActionOption(prosperity=3, store_hand_card=True, storage_income_per_card=3, text="Hide one hand card beside the blocked entrance."),), "Atta cephalotes and A. colombica", "Foragers can deposit leaf fragments outside a temporarily blocked nest entrance as a cache.", "https://www.sciencedirect.com/science/article/pii/S0003347299913325", "Payoff", "A short-term cache preserves a harvest while access is constrained.", (ActionOption(prosperity=1, text="Preserve a small leaf cache."),)),
     _action("acromyrmex_spore_removal", "Acromyrmex Spore Removal", frozenset({"Chemistry", "Sociality"}), {}, (ActionOption(shields=(_shield("sanitation", amount=1),), text="Remove spores and contaminated garden material."),), "Acromyrmex leafcutter ants", "Workers physically remove Escovopsis spores and mycelium alongside chemical defenses.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/", "Bridge", "A behavioral sanitation route can complement microbial antibiotics."),
     _action("cataglyphis_heatshock_proteins", "Cataglyphis Heatshock Proteins", frozenset({"Chemistry"}), {}, (ActionOption(prosperity=1, text="Protect cellular machinery during a hot run."),), "Cataglyphis bombycina", "Heat-adapted ants show constitutive and inducible molecular chaperone responses to thermal stress.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6003908/", "Bridge", "A less visible thermal route contributes to the environmental optimization.", root_tag_counts={"Chemistry": 2}),
-    _action("megaponera_termite_raid", "Megaponera Termite Raid", frozenset({"Sociality", "Resource Ecology"}), {}, (ActionOption(prosperity=2, text="Bring home a coordinated termite harvest."), ActionOption(shields=(_shield("raid", amount=1),), text="Keep the raid column together.")), "Megaponera analis", "This species performs group raids on highly defensive termites, with specialized task division.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5389746/", "Bridge", "A profitable raid is tempting even when it exposes the colony to injury."),
+    _action("megaponera_termite_raid", "Megaponera Termite Raid", frozenset({"Sociality"}), {}, (ActionOption(prosperity=2, text="Bring home a coordinated termite harvest."), ActionOption(shields=(_shield("raid", amount=1),), text="Keep the raid column together.")), "Megaponera analis", "This species performs group raids on highly defensive termites, with specialized task division.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5389746/", "Bridge", "A profitable raid is tempting even when it exposes the colony to injury."),
     _action("temnothorax_emergency_emigration", "Temnothorax Emergency Emigration", frozenset({"Nesting"}), {}, (ActionOption(prosperity=1, text="Move before the cavity becomes unsafe."),), "Temnothorax albipennis", "Colonies emigrate from fragile cavities when their current nest is damaged or deteriorates.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3101226/", "Bridge", "The decision is about preserving a viable nest; relocation is the response, not a root tag."),
     _action("lasius_sealed_foundation", "Lasius Sealed Foundation", frozenset({"Nesting", "Resource Ecology"}), {}, (ActionOption(prosperity=2, text="Seal a new colony's first chamber."),), "Lasius niger", "Claustral Lasius niger queens raise their first worker generation from stored reserves without foraging.", "https://academic.oup.com/biolinnean/article/142/4/397/7342048", "Foundation", "A sealed founding chamber turns stored reserves into the first generation."),
     _action("diacamma_gemma_inheritance", "Diacamma Gemma Inheritance", frozenset({"Morphology", "Sociality"}), {"Nesting": 2}, (ActionOption(prosperity=3, retention_bonus=1, text="Pass reproductive potential to a successor worker."),), "Diacamma sp.", "All newly emerged females bear thoracic gemmae; the reproductive worker removes them from nestmates, leaving a future successor with reproductive potential.", "https://pubmed.ncbi.nlm.nih.gov/15647944/", "Payoff", "A physical reproductive reserve makes succession possible without a queen.", (ActionOption(prosperity=1, text="Protect a possible successor."),)),
@@ -121,10 +121,30 @@ _NORMAL_TRAITS_RAW: tuple[TraitCard, ...] = (
     _action("pristomyrmex_worker_queens", "Pristomyrmex Worker Queens", frozenset({"Sociality"}), {"Nesting": 2}, (ActionOption(prosperity=3, retention_bonus=1, text="Let a worker carry the colony's reproductive future."),), "Pristomyrmex punctatus", "Queenless colonies contain monomorphic females that first reproduce thelytokously and later perform cooperative work.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2664351/", "Payoff", "Reproduction is distributed through the worker force rather than held by one queen.", (ActionOption(prosperity=1, text="Keep a worker reproductive option."),)),
     _action("formica_resin_pharmacy", "Formica Resin Pharmacy", frozenset({"Chemistry", "Nesting"}), {}, (ActionOption(shields=(_shield("sanitation", amount=1),), text="Line the nest with antimicrobial resin."),), "Formica paralugubris", "Formica paralugubris collects conifer resin and places it in the nest, reducing microbial growth.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2275180/", "Bridge", "A nest material doubles as a chemical sanitation system."),
     _action("myrmica_funeral_workers", "Myrmica Funeral Workers", frozenset({"Sociality", "Nesting"}), {}, (ActionOption(shields=(_shield("sanitation", amount=1),), text="Remove a dead nestmate before decay spreads."),), "Myrmica rubra", "Myrmica rubra workers detect and remove corpses, limiting the time dead nestmates remain in the colony.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC11632371/", "Bridge", "Division of corpse removal keeps sanitation from depending on one specialist."),
+    _action("myrmecia_antimicrobial_gland", "Myrmecia Antimicrobial Gland", frozenset({"Chemistry"}), {}, (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Apply gland secretions against microbes."),), "Myrmecia gulosa", "Myrmecia workers use antimicrobial gland secretions on nest material and brood-associated surfaces.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4817065/", "Foundation", "Antimicrobial gland chemistry reduces microbial growth around the colony."),
+    _action("crematogaster_sticky_gland", "Crematogaster Sticky Gland", frozenset({"Chemistry"}), {}, (ActionOption(prosperity=1, shields=(_shield("raid", amount=1),), text="Spread a sticky defensive secretion."),), "Crematogaster peringueyi", "Crematogaster workers deploy sticky glandular secretions that impede attacking arthropods.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4551136/", "Foundation", "A defensive secretion makes an attack costly for a small invader."),
+    _action("oecophylla_venom_spray", "Oecophylla Venom Spray", frozenset({"Chemistry"}), {}, (ActionOption(prosperity=1, shields=(_shield("raid", amount=1),), text="Spray venom at an intruder."),), "Oecophylla smaragdina", "Weaver ants bite and spray formic-acid-rich venom during attacks on nest enemies.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3997362/", "Foundation", "Venom chemistry complements the coordinated defense of a weaver-ant colony."),
+    _action("formica_acid_resin", "Formica Acid Resin", frozenset({"Chemistry"}), {}, (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Combine resin and defensive acid."),), "Formica paralugubris", "Formica paralugubris places conifer resin in the nest, where it acts together with worker chemical defenses.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2275180/", "Foundation", "Resin and acid chemistry create a hostile surface for microbes."),
+    _action("polyrhachis_polarized_eye", "Polyrhachis Polarized Eye", frozenset({"Morphology"}), {}, (ActionOption(prosperity=1, next_candidate_bonus=1, text="Use polarized light to orient in the canopy."),), "Polyrhachis spp.", "Arboreal Polyrhachis ants use sky polarization and visual cues while moving through the canopy.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4523029/", "Foundation", "Visual sensory structures make distant canopy routes usable."),
+    _action("odontomachus_night_vision", "Odontomachus Night Vision", frozenset({"Morphology"}), {}, (ActionOption(prosperity=1, next_candidate_bonus=1, text="Use enlarged eyes in dim forest light."),), "Odontomachus coquereli", "Some trap-jaw ants have enlarged compound eyes adapted for visually guided activity in low light.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4633845/", "Foundation", "Eye morphology expands the conditions in which a forager can search."),
+    _action("pseudomyrmex_slender_legs", "Pseudomyrmex Slender Legs", frozenset({"Morphology"}), {}, (ActionOption(prosperity=1, next_candidate_bonus=1, text="Run along narrow stems with elongated legs."),), "Pseudomyrmex gracilis", "Pseudomyrmex workers have elongated legs and agile bodies suited to rapid movement on vegetation.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3883824/", "Foundation", "Leg morphology opens thin plant surfaces as usable foraging space."),
+    _action("myrmecia_visual_hunt", "Myrmecia Visual Hunt", frozenset({"Morphology"}), {}, (ActionOption(prosperity=2, text="Track prey with precise visual pursuit."),), "Myrmecia gulosa", "Myrmecia workers rely strongly on visual landmark learning and visual pursuit while hunting.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3540202/", "Foundation", "Large-eyed visual hunting gives an individual direct control of a chase."),
+    _action("lasius_trophallaxis", "Lasius Trophallaxis", frozenset({"Resource Ecology"}), {}, (ActionOption(prosperity=2, text="Share liquid food mouth to mouth."),), "Lasius niger", "Lasius workers distribute liquid food through repeated mouth-to-mouth trophallaxis.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4681411/", "Foundation", "Liquid food sharing turns one discovery into colony-wide nutrition."),
+    _action("azteca_domatia", "Azteca Domatia", frozenset({"Nesting"}), {}, (ActionOption(prosperity=2, text="Occupy a hollow plant chamber with a host tree."),), "Azteca alfari", "Azteca alfari colonies inhabit hollow swollen petioles of Cecropia and maintain a plant-ant association.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3494260/", "Foundation", "A plant-provided hollow gives the colony a specialized living shelter."),
+    _action("formica_self_medication", "Formica Self Medication", frozenset({"Chemistry"}), {"Morphology": 2}, (ActionOption(prosperity=2, shields=(_shield("sanitation", amount=2),), text="Use an antimicrobial substance against infection."),), "Formica fusca", "Formica fusca workers ingest antimicrobial substances when exposed to fungal pathogens.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3711905/", "Payoff", "Self-medication turns a chemical choice into colony-level disease resistance.", (ActionOption(prosperity=1, text="Sample a defensive substance."),)),
+    _action("atta_acid_pharmacy", "Atta Acid Pharmacy", frozenset({"Chemistry"}), {"Morphology": 2, "Resource Ecology": 2}, (ActionOption(prosperity=5, shields=(_shield("sanitation", amount=2),), text="Apply metapleural and garden-associated antimicrobials."),), "Atta sexdens", "Leafcutter ants use metapleural gland secretions and garden-associated antimicrobial compounds against pathogens.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/", "Payoff", "A cultivated garden and specialized glands form a chemical pharmacy.", (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Apply a small antimicrobial treatment."),)),
+    _action("camponotus_saliva_care", "Camponotus Saliva Care", frozenset({"Chemistry"}), {"Morphology": 2, "Sociality": 2}, (ActionOption(prosperity=5, shields=(_shield("sanitation", amount=3),), text="Coat a wound with antimicrobial oral fluid."),), "Camponotus floridanus", "Camponotus workers use antimicrobial compounds in oral secretions during social wound care.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10756881/", "Payoff", "Social wound care delivers chemical protection exactly where it is needed.", (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Clean a wound with oral fluid."),)),
+    _action("acromyrmex_phenylacetic_acid", "Acromyrmex Phenylacetic Acid", frozenset({"Chemistry"}), {"Morphology": 2, "Nesting": 2}, (ActionOption(prosperity=5, shields=(_shield("sanitation", amount=2),), text="Release phenylacetic acid against garden pathogens."),), "Acromyrmex octospinosus", "Acromyrmex metapleural glands produce phenylacetic acid with antifungal activity.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/", "Payoff", "A specialized gland product provides a strong chemical barrier to garden disease.", (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Release a small antifungal secretion."),)),
+    _action("atta_hard_mandible", "Atta Hard Mandible", frozenset({"Morphology"}), {"Chemistry": 2, "Resource Ecology": 2}, (ActionOption(prosperity=5, tag_prosperity=(("Resource Ecology", 1),), text="Cut and process tough plant material."),), "Atta colombica", "Atta workers use differentiated mandibles to cut leaves and process plant material for the fungus garden.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC9019514/", "Payoff", "Mandible form converts every established resource pathway into more processing capacity.", (ActionOption(prosperity=1, text="Cut a small piece of leaf material."),)),
+    _action("pheidole_bite_muscle", "Pheidole Bite Muscle", frozenset({"Morphology"}), {"Chemistry": 2, "Sociality": 2}, (ActionOption(prosperity=5, text="Drive a powerful defensive bite."),), "Pheidole pallidula", "Pheidole soldiers have enlarged head and mandibular musculature that produces powerful bites.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3334560/", "Payoff", "Muscle and mandible form turn a single defender into a decisive bite force.", (ActionOption(prosperity=1, text="Make a smaller defensive bite."),)),
+    _action("melophorus_ocelli", "Melophorus Ocelli", frozenset({"Morphology"}), {"Chemistry": 2, "Resource Ecology": 2}, (ActionOption(prosperity=5, next_candidate_bonus=2, text="Read polarized skylight through enlarged ocelli."),), "Melophorus bagoti", "Melophorus bagoti uses polarized skylight and visual landmarks to navigate over open Australian ground.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC1567920/", "Payoff", "Expanded visual sensing makes a broader search space navigable.", (ActionOption(prosperity=1, text="Follow a familiar visual landmark."),)),
+    _action("temnothorax_worker_size", "Temnothorax Worker Size", frozenset({"Morphology"}), {"Chemistry": 2, "Sociality": 2}, (ActionOption(prosperity=5, retention_bonus=1, text="Deploy size-diverse workers for different tasks."),), "Temnothorax longispinosus", "Temnothorax colonies contain workers of variable size whose morphology is associated with task performance.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4079623/", "Payoff", "Worker-size variation preserves a broader task repertoire.", (ActionOption(prosperity=1, text="Use one worker size for a simple task."),)),
+    _action("pogonomyrmex_seed_sorting", "Pogonomyrmex Seed Sorting", frozenset({"Resource Ecology"}), {"Morphology": 2, "Chemistry": 2}, (ActionOption(prosperity=5, retention_bonus=1, text="Sort seeds by size and processability."),), "Pogonomyrmex badius", "Pogonomyrmex workers sort and process collected seeds, including germinated seeds and hard seed types.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5125654/", "Payoff", "Sorting behavior keeps different seed types usable across changing conditions.", (ActionOption(prosperity=1, text="Sort a small seed batch."),)),
+    _action("camponotus_amputation", "Camponotus Amputation", frozenset({"Sociality"}), {"Morphology": 2, "Chemistry": 2}, (ActionOption(prosperity=5, shields=(_shield("sanitation", amount=3),), text="Remove a damaged limb before infection spreads."),), "Camponotus floridanus", "Camponotus floridanus workers treat severe injuries with wound care and, in some cases, limb amputation.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10756881/", "Payoff", "A coordinated surgical response can prevent a local injury from becoming fatal.", (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Clean a damaged limb."),)),
 )
 
 
-# v0.10 tuning is kept as explicit data overrides so the biological card
+# v0.11 tuning is kept as explicit data overrides so the biological card
 # catalogue above stays readable while shared effect patterns remain consistent.
 _PAYOFF_ROOT: dict[str, str] = {
     "oecophylla_living_chain": "Sociality",
@@ -146,6 +166,72 @@ _PAYOFF_ROOT: dict[str, str] = {
     "mycocepurus_clonal_garden": "Resource Ecology",
     "cardiocondyla_dual_males": "Morphology",
     "pristomyrmex_worker_queens": "Sociality",
+    "formica_self_medication": "Chemistry",
+    "atta_acid_pharmacy": "Chemistry",
+    "camponotus_saliva_care": "Chemistry",
+    "acromyrmex_phenylacetic_acid": "Chemistry",
+    "atta_hard_mandible": "Morphology",
+    "pheidole_bite_muscle": "Morphology",
+    "melophorus_ocelli": "Morphology",
+    "temnothorax_worker_size": "Morphology",
+    "pogonomyrmex_seed_sorting": "Resource Ecology",
+    "camponotus_amputation": "Sociality",
+}
+
+_PAYOFF_REQUIREMENTS: dict[str, dict[str, int]] = {
+    # Completed cards deliberately ask for a different developmental basis.
+    "oecophylla_living_chain": {"Nesting": 2},
+    "cephalotes_living_gate": {"Sociality": 3, "Nesting": 1},
+    "pheidole_supermajor_program": {"Sociality": 3},
+    "pheidole_seed_miller": {"Sociality": 2, "Morphology": 2},
+    "myrmecocystus_reserve": {"Sociality": 2},
+    "megaponera_field_medicine": {"Sociality": 3},
+    "colobopsis_last_defense": {"Nesting": 3},
+    "paraponera_poneratoxin": {"Morphology": 3},
+    "acromyrmex_antibiotic_garden": {"Resource Ecology": 3},
+    "cataglyphis_sky_compass": {"Morphology": 2},
+    "pheidole_raid_wall": {"Nesting": 3, "Morphology": 1},
+    "pogonomyrmex_granary": {"Resource Ecology": 3},
+    "solenopsis_dry_store": {"Sociality": 3},
+    "atta_leaf_cache": {"Nesting": 2},
+    "diacamma_gemma_inheritance": {"Nesting": 2},
+    "ooceraea_synchronized_brood": {"Resource Ecology": 2},
+    "mycocepurus_clonal_garden": {"Chemistry": 2},
+    "cardiocondyla_dual_males": {"Resource Ecology": 2},
+    "pristomyrmex_worker_queens": {"Nesting": 2},
+    "formica_self_medication": {"Morphology": 2},
+    "atta_acid_pharmacy": {"Morphology": 2, "Resource Ecology": 2},
+    "camponotus_saliva_care": {"Morphology": 2, "Sociality": 2},
+    "acromyrmex_phenylacetic_acid": {"Morphology": 2, "Nesting": 2},
+    "atta_hard_mandible": {"Chemistry": 2, "Resource Ecology": 2},
+    "pheidole_bite_muscle": {"Chemistry": 2, "Sociality": 2},
+    "melophorus_ocelli": {"Chemistry": 2, "Resource Ecology": 2},
+    "temnothorax_worker_size": {"Chemistry": 2, "Sociality": 2},
+    "pogonomyrmex_seed_sorting": {"Morphology": 2, "Chemistry": 2},
+    "camponotus_amputation": {"Morphology": 2, "Chemistry": 2},
+}
+
+_NEW_TRAIT_SOURCES: dict[str, tuple[str, str]] = {
+    "myrmecia_antimicrobial_gland": ("Myrmecia gulosa", "https://pubmed.ncbi.nlm.nih.gov/1568945/"),
+    "crematogaster_sticky_gland": ("Crematogaster inflata", "https://pubmed.ncbi.nlm.nih.gov/28308697/"),
+    "oecophylla_venom_spray": ("Oecophylla smaragdina", "https://pmc.ncbi.nlm.nih.gov/articles/PMC7249187/"),
+    "formica_acid_resin": ("Formica paralugubris", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5383563/"),
+    "polyrhachis_polarized_eye": ("Polyrhachis sokolova", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3796537/"),
+    "odontomachus_night_vision": ("Odontomachus hastatus", "https://pubmed.ncbi.nlm.nih.gov/24969268/"),
+    "pseudomyrmex_slender_legs": ("Pseudomyrmex ferrugineus group", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5360922/"),
+    "myrmecia_visual_hunt": ("Myrmecia pyriformis", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5312018/"),
+    "lasius_trophallaxis": ("Lasius niger", "https://www.nature.com/articles/s41598-019-52019-6"),
+    "azteca_domatia": ("Azteca muelleri", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4374854/"),
+    "formica_self_medication": ("Formica fusca", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10926551/"),
+    "atta_acid_pharmacy": ("Atta cephalotes", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4424645/"),
+    "camponotus_saliva_care": ("Camponotus floridanus", "https://doi.org/10.1016/j.cub.2024.06.021"),
+    "acromyrmex_phenylacetic_acid": ("Acromyrmex spp.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/"),
+    "atta_hard_mandible": ("Atta laevigata", "https://doi.org/10.1111/phen.12476"),
+    "pheidole_bite_muscle": ("Pheidole spp.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC8187013/"),
+    "melophorus_ocelli": ("Melophorus bagoti", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3210681/"),
+    "temnothorax_worker_size": ("Temnothorax rugatulus", "https://doi.org/10.1007/s00040-014-0363-5"),
+    "pogonomyrmex_seed_sorting": ("Pogonomyrmex badius", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5125654/"),
+    "camponotus_amputation": ("Camponotus floridanus", "https://doi.org/10.1016/j.cub.2024.06.021"),
 }
 
 _OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
@@ -166,12 +252,19 @@ _OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
         ActionOption(prosperity=3, text="Carry the cached leaf onward instead of storing a card."),
     ),
     "harpegnathos_gamergate": (
-        ActionOption(prosperity=1, text="Let a worker become a reproductive option."),
-        ActionOption(recover_lower_card=True, text="Reverse a gene-expression state and return one lower card in this column to hand."),
+        ActionOption(prosperity=2, text="Let a worker become a reproductive option."),
+        ActionOption(prosperity=1, recover_lower_card=True, text="Reverse a gene-expression state and return one lower card in this column to hand."),
     ),
     "cephalotes_aerialis": (
-        ActionOption(shields=(_shield("raid", amount=1),), text="Steer a fall away from a hunter."),
-        ActionOption(next_candidate_bonus=1, text="Range across the canopy and widen the next evolutionary search."),
+        ActionOption(prosperity=1, shields=(_shield("raid", amount=1),), text="Steer a fall away from a hunter."),
+        ActionOption(prosperity=1, next_candidate_bonus=1, text="Range across the canopy and widen the next evolutionary search."),
+    ),
+    "odontomachus_tension_lock": (
+        ActionOption(prosperity=2, text="Snap at prey or rivals."),
+        ActionOption(prosperity=1, shields=(_shield("raid", amount=1),), text="Use the snap to launch away."),
+    ),
+    "megaponera_rescue_column": (
+        ActionOption(prosperity=1, shields=(_shield("raid", amount=1),), text="Carry an injured nestmate home."),
     ),
     "temnothorax_quorum_nest": (
         ActionOption(prosperity=1, text="Recruit toward the best available cavity."),
@@ -179,11 +272,14 @@ _OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
     ),
     "solenopsis_raft_cycling": (
         ActionOption(prosperity=1, text="Cycle workers through a living raft."),
-        ActionOption(next_candidate_bonus=1, text="Expose cycling workers to new conditions and reveal one extra candidate next round."),
+        ActionOption(prosperity=1, next_candidate_bonus=1, text="Expose cycling workers to new conditions and reveal one extra candidate next round."),
     ),
     "temnothorax_emergency_emigration": (
         ActionOption(prosperity=1, text="Move before the cavity becomes unsafe."),
-        ActionOption(next_candidate_bonus=1, text="Explore alternate cavities and reveal one extra candidate next round."),
+        ActionOption(prosperity=1, next_candidate_bonus=1, text="Explore alternate cavities and reveal one extra candidate next round."),
+    ),
+    "vollenhovia_three_lineage": (
+        ActionOption(prosperity=2, text="Maintain three reproductive lineages in one colony."),
     ),
 }
 
@@ -191,7 +287,10 @@ NORMAL_TRAITS: tuple[TraitCard, ...] = tuple(
     replace(
         card,
         root_tags=frozenset({_PAYOFF_ROOT[card.id]}) if card.id in _PAYOFF_ROOT else card.root_tags,
+        activation_requirements=_PAYOFF_REQUIREMENTS.get(card.id, card.activation_requirements),
         options=_OPTION_OVERRIDES.get(card.id, card.options),
+        source_taxon=_NEW_TRAIT_SOURCES.get(card.id, (card.source_taxon, card.biology_source))[0],
+        biology_source=_NEW_TRAIT_SOURCES.get(card.id, (card.source_taxon, card.biology_source))[1],
     )
     for card in _NORMAL_TRAITS_RAW
 )
@@ -229,6 +328,26 @@ DISASTERS: tuple[DisasterCard, ...] = (
         "wet_tropical_floor", "Wet Tropical Forest Floor", (), {"raid": ProblemRollRule(rolls=1, bonus=0), "sanitation": ProblemRollRule(rolls=1, bonus=2)}, "Warm, wet litter and dense organic matter make colony sanitation unusually difficult."),
     EnvironmentCard(
         "urban_disturbance", "Urban Disturbance", (), {"raid": ProblemRollRule(rolls=1, bonus=1), "sanitation": ProblemRollRule(rolls=1, bonus=1)}, "Crowding, invasive neighbors, waste, and broken nesting sites amplify both recurring problems."),
+    EnvironmentCard(
+        "army_ant_march", "Army Ant March", (
+            OptimizationRequirement("社会的な迎撃", {"Sociality": 8}, "Pheidole obtusospinosa", "Workers and specialized soldiers coordinate layered defenses against army-ant raids.", "https://academic.oup.com/jinsectscience/article/10/1/1/820704", "A whole-colony defense must absorb a massed army-ant advance."),
+            OptimizationRequirement("深巣退避", {"Nesting": 8}, "Formicidae (deep-nesting ants)", "Some colonies use protected chambers and narrow entrances to reduce access by invading ants.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC528881/", "A deeply protected nest avoids the exposed front of the march."),
+        ), {"raid": ProblemRollRule(bonus=3), "sanitation": ProblemRollRule(bonus=2)}, "A column of army ants sweeps across the habitat, forcing a mature colony to commit its defenses.", deck="finale"),
+    EnvironmentCard(
+        "fungus_garden_collapse", "Fungus Garden Collapse", (
+            OptimizationRequirement("抗菌腺防衛", {"Chemistry": 8}, "Acromyrmex octospinosus", "Metapleural and symbiont-derived compounds suppress fungal pathogens in leafcutter gardens.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/", "Chemical protection can hold a cultivated garden together during a pathogen surge."),
+            OptimizationRequirement("資源転換", {"Resource Ecology": 8}, "Atta colombica", "Leafcutting ants continually process plant material into a maintained fungal cultivar.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC9019514/", "A colony with broad resource processing can rebuild its food base after collapse."),
+        ), {"raid": ProblemRollRule(bonus=2), "sanitation": ProblemRollRule(rolls=2, combine="sum")}, "A pathogenic wave overwhelms ordinary garden maintenance and spreads through cultivated chambers.", deck="finale"),
+    EnvironmentCard(
+        "extreme_heat_peak", "Extreme Heat Peak", (
+            OptimizationRequirement("反射体表", {"Morphology": 8}, "Cataglyphis bombycina", "Reflective triangular hairs reduce solar heat load during exposed desert activity.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4830450/", "Body form must carry the colony through a heat peak beyond ordinary activity."),
+            OptimizationRequirement("熱ショック保護", {"Chemistry": 8}, "Cataglyphis bombycina", "Heat-shock proteins and molecular chaperones protect cellular machinery under thermal stress.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6003908/", "Cellular chemistry offers a second route through extreme heat."),
+        ), {"raid": ProblemRollRule(bonus=2), "sanitation": ProblemRollRule(bonus=3)}, "A final burst of heat makes exposed bodies and cellular chemistry fail at once.", deck="finale"),
+    EnvironmentCard(
+        "great_flood", "Great Flood", (
+            OptimizationRequirement("生体いかだ", {"Sociality": 8}, "Solenopsis invicta", "Fire ants interlock into buoyant rafts and continually exchange positions in floodwater.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3462402/", "Collective buoyancy keeps brood and workers above a landscape-wide flood."),
+            OptimizationRequirement("樹冠の巣", {"Nesting": 8}, "Oecophylla smaragdina", "Weaver ants build connected leaf nests high in vegetation using larval silk.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "A mature canopy nest provides refuge when all ground routes disappear."),
+        ), {"raid": ProblemRollRule(rolls=2, combine="sum"), "sanitation": ProblemRollRule(bonus=3)}, "A landscape-wide flood removes ground routes and isolates every remaining refuge.", deck="finale"),
 )
 
 

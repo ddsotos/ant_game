@@ -71,6 +71,40 @@
 - 上表の「追加案」は未採用であり、ゲームへ自動的に追加しない。
 - 新しい災害候補は、現行災害と役割が重複せず、既存の災害タグで表現でき、一次資料または査読論文で根拠を確認できる場合だけ検討する。
 - 数値調整は生物学的出典から導かず、ユーザーの実プレイ記録を根拠に行う。
+
+## v0.11 追加カード題材
+
+v0.11では、化学8・形態8・資源生態2・社会性1・巣作り1の単タグカードを追加した。
+効果の数値はゲーム上の仮置きであり、下表は実在形質と出典の対応だけを記録する。
+
+| カード | 題材 | 出典 |
+|---|---|---|
+| ウシアリの抗菌腺 | 腺分泌物による微生物抑制 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4817065/ |
+| シリアゲアリの粘着腺 | 粘着性防御分泌物 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4551136/ |
+| ツムギアリの毒液噴霧 | 咬みつきと毒液噴霧 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3997362/ |
+| 樹脂アリの酸性樹脂 | 樹脂と化学防御の併用 | https://pmc.ncbi.nlm.nih.gov/articles/PMC2275180/ |
+| 潮アリの偏光眼 | 樹冠での偏光・視覚定位 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4523029/ |
+| アギトアリの夜間視 | 低照度での視覚活動 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4633845/ |
+| アカシアリの細脚 | 植物上を走る細長い脚 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3883824/ |
+| ウシアリの視覚狩り | 視覚的な追跡狩り | https://pmc.ncbi.nlm.nih.gov/articles/PMC3540202/ |
+| クロヤマアリの口移し | 液体食料の栄養交換 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4681411/ |
+| アズテカの空洞巣 | Cecropiaの中空葉柄利用 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3494260/ |
+| クロアリの自己投薬 | 病原菌への抗菌物質摂取 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3711905/ |
+| ハキリアリの抗菌酸 | 腺・共生菌由来の抗菌物質 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/ |
+| オオアリの唾液治療 | 口腔分泌物による創傷処置 | https://pmc.ncbi.nlm.nih.gov/articles/PMC10756881/ |
+| ハキリアリのフェニル酢酸 | 後胸腺の抗真菌性分泌物 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/ |
+| ハキリアリの硬質顎 | 葉の切断と菌園への加工 | https://pmc.ncbi.nlm.nih.gov/articles/PMC9019514/ |
+| オオズアリの咬合筋 | 兵隊の頭部・大顎の咬合力 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3334560/ |
+| 砂走アリの単眼航法 | 偏光天空を使う航法 | https://pmc.ncbi.nlm.nih.gov/articles/PMC1567920/ |
+| ムネボソアリの体格分業 | 働きアリの体格差と仕事分担 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4079623/ |
+| 収穫アリの種子選別 | 種子の選別・発芽種子の加工 | https://pmc.ncbi.nlm.nih.gov/articles/PMC5125654/ |
+| オオアリの断脚治療 | 重傷個体への処置と切断 | https://pmc.ncbi.nlm.nih.gov/articles/PMC10756881/ |
+
+## v0.11 終局環境
+
+5ラウンド目専用の `finale` 環境を4枚追加した。各カードは単一タグ8、または別の単一タグ8の
+二択を持ち、襲撃・衛生の問題強度も通常環境より高い。軍隊アリの行軍、菌園崩壊、極端熱波、
+大洪水を題材とし、通常環境8枚とは別デッキとして扱う。
 ## v0.6 Movementタグ廃止の個別判断
 
 移動そのものは多くの適応に伴う結果であり、根タグとして残すと他の適応と重複するため廃止した。各カードは、生態学的に最も説明力の高い既存タグへ一度だけ再解釈し、独立した根拠が弱い場合は単純に削除した。

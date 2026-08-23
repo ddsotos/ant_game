@@ -221,17 +221,17 @@ class WebGameService:
         # ``optimization`` is retained as a read-only compatibility alias for
         # older debug clients; new clients must use ``optimizations``.
         legacy = optimizations[0] if optimizations else {"name": "最適化なし", "text": "", "requirements": []}
-        return {"id": environment.id, "name": localized[0] or environment.name, "text": localized[1] or environment.text, "optimizations": optimizations, "optimization": legacy, "problem_roll_rules": {problem: {"rolls": rule.rolls, "bonus": rule.bonus, "previous_round_bonus": rule.previous_round_bonus} for problem, rule in environment.problem_roll_rules.items()}}
+        return {"id": environment.id, "name": localized[0] or environment.name, "text": localized[1] or environment.text, "deck": environment.deck, "finale": environment.deck == "finale", "optimizations": optimizations, "optimization": legacy, "problem_roll_rules": {problem: {"rolls": rule.rolls, "combine": rule.combine, "bonus": rule.bonus, "previous_round_bonus": rule.previous_round_bonus} for problem, rule in environment.problem_roll_rules.items()}}
 
     @classmethod
     def _problem_data(cls, problem: str, context: Any = None, shield: int = 0) -> dict[str, Any]:
-        if context is None: return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": None, "raw_rolls": [], "selected_roll": None, "modifier": 0, "roll_source": None, "shield": shield, "unblocked": None, "penalty": None}
+        if context is None: return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": None, "raw_rolls": [], "selected_roll": None, "modifier": 0, "roll_source": None, "combine": "highest", "shield": shield, "unblocked": None, "penalty": None}
         roll = context.problem_rolls.get(problem)
         raw = tuple(context.problem_raw_rolls.get(problem, ()))
         selected = context.problem_selected_rolls.get(problem)
         modifier = context.problem_modifiers.get(problem, 0)
         unblocked = max(0, roll - shield) if roll is not None else None
-        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(raw), "selected_roll": selected, "modifier": modifier, "roll_source": context.problem_roll_sources.get(problem, "dice"), "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(raw), "selected_roll": selected, "modifier": modifier, "roll_source": context.problem_roll_sources.get(problem, "dice"), "combine": context.problem_roll_combines.get(problem, "highest"), "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
 
     @staticmethod
     def _tag_data(tag: str, count: int | None = None) -> dict[str, Any]:
@@ -289,6 +289,7 @@ class WebGameService:
             "store_hand_card": option.store_hand_card,
             "storage_income_per_card": option.storage_income_per_card,
             "tag_prosperity_cap": option.tag_prosperity_cap,
+            "tag_prosperity_divisor": option.tag_prosperity_divisor,
             "tag_prosperity": [{"tag": tag, "name": TAG_NAMES.get(tag, tag), "coefficient": coefficient} for tag, coefficient in option.tag_prosperity],
             "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in option.shields],
         }
@@ -303,7 +304,7 @@ class WebGameService:
     @classmethod
     def _problem_result(cls, record: Any, problem: str) -> dict[str, Any]:
         roll = record.problem_rolls[problem]; unblocked = record.unblocked_by_problem[problem]
-        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(record.problem_raw_rolls.get(problem, ())), "selected_roll": record.problem_selected_rolls.get(problem), "modifier": record.problem_modifiers.get(problem, 0), "roll_source": record.problem_roll_sources.get(problem, "dice"), "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(record.problem_raw_rolls.get(problem, ())), "selected_roll": record.problem_selected_rolls.get(problem), "modifier": record.problem_modifiers.get(problem, 0), "roll_source": record.problem_roll_sources.get(problem, "dice"), "combine": record.problem_roll_combines.get(problem, "highest"), "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
 
 
 SERVICE = WebGameService()
@@ -318,7 +319,7 @@ def japanese_error(exc: Exception) -> str:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.10"
+    server_version = "AntGame/0.11"
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/config": self._json(SERVICE.config())

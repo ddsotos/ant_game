@@ -21,6 +21,8 @@ def test_service_exposes_five_tags_and_environment_forecast_without_problem_clas
         "Morphology", "Chemistry", "Sociality", "Nesting", "Resource Ecology"
     }
     assert len(first["forecast"]) == 5
+    assert all(not item["finale"] for item in first["forecast"][:4])
+    assert first["forecast"][4]["finale"] is True
     assert [item["id"] for item in first["forecast"]] == [item["id"] for item in second["forecast"]]
     assert all("hazard_tags" not in item for item in first["forecast"])
     assert "environment" in first and "hazard_tags" not in first["environment"]
@@ -108,13 +110,13 @@ def test_placement_color_prediction_accounts_for_oldest_card_pushout():
     opened = service.new_game(seed=21)
     session = service.sessions[opened["game_id"]]
     target = session.engine.traits["oecophylla_living_chain"]
-    assert target.activation_requirements == {"Sociality": 2}
+    assert target.activation_requirements == {"Nesting": 2}
     session.state.columns[0].cards = [
-        PlayedCard("old-social", "collective_foraging"),
-        PlayedCard("non-social-1", "trail_pheromone"),
-        PlayedCard("non-social-2", "trail_pheromone"),
-        PlayedCard("non-social-3", "trail_pheromone"),
-        PlayedCard("non-social-4", "trail_pheromone"),
+        PlayedCard("old-nesting", "nest_architecture"),
+        PlayedCard("non-nesting-1", "trail_pheromone"),
+        PlayedCard("non-nesting-2", "trail_pheromone"),
+        PlayedCard("non-nesting-3", "trail_pheromone"),
+        PlayedCard("non-nesting-4", "trail_pheromone"),
     ]
     option = service._placement_option_data(session.engine, session.state, 0, target)
     assert option["status"] == "other"
@@ -132,6 +134,7 @@ def test_browser_service_resolves_one_round_and_exposes_audit_trail():
     assert resolved["score_after_problems"] == resolved["score_after_prosperity"]
     assert resolved["gain_breakdown"]["pool_after_problems"] == max(0, resolved["gain_breakdown"]["pool_before_problems"] - resolved["problem_penalty"])
     assert all(problem["raw_rolls"] for problem in resolved["problems"])
+    assert all(problem["combine"] == "highest" for problem in resolved["problems"])
     assert result["state"]["round"] == 2
 
 
@@ -147,14 +150,14 @@ def test_card_effects_and_conditions_are_structured_data():
     for candidate in state["candidates"]:
         assert isinstance(candidate["options"], list)
         for option in candidate["options"]:
-            assert {"text", "prosperity", "draw_cards", "shields", "retention_bonus", "store_hand_card", "storage_income_per_card", "tag_prosperity"} <= set(option)
+            assert {"text", "prosperity", "draw_cards", "shields", "retention_bonus", "store_hand_card", "storage_income_per_card", "tag_prosperity", "tag_prosperity_cap", "tag_prosperity_divisor"} <= set(option)
 
 
 def test_specialist_tag_multiplicity_is_exposed_to_the_browser():
     service = WebGameService()
-    card = service._card_data(TRAIT_BY_ID["oecophylla_silkworks"], "test")
-    nesting = next(tag for tag in card["tags"] if tag["id"] == "Nesting")
-    assert nesting["count"] == 2
+    card = service._card_data(TRAIT_BY_ID["atta_fungus_garden"], "test")
+    resource = next(tag for tag in card["tags"] if tag["id"] == "Resource Ecology")
+    assert resource["count"] == 2
 
 
 def test_targetless_activation_stays_enabled_with_an_empty_hand():
@@ -168,7 +171,7 @@ def test_targetless_activation_stays_enabled_with_an_empty_hand():
     assert column["activations"][0]["enabled"] is True
 
 
-def test_real_http_server_serves_v010_page_and_rejects_non_object_json():
+def test_real_http_server_serves_v011_page_and_rejects_non_object_json():
     server = ThreadingHTTPServer(("127.0.0.1", 0), RequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -180,7 +183,9 @@ def test_real_http_server_serves_v010_page_and_rejects_non_object_json():
             assert "symbol-linked-ants" in page
             assert 'id="environment"' not in page
         with urlopen(base + "/app.js", timeout=2) as response:
-            assert "今ラウンドの繁栄・シールド" in response.read().decode("utf-8")
+            javascript = response.read().decode("utf-8")
+            assert "今ラウンドの繁栄・シールド" in javascript
+            assert "最終環境" in javascript
         with urlopen(base + "/style.css", timeout=2) as response:
             css = response.read().decode("utf-8")
             assert "min-height:44px" in css

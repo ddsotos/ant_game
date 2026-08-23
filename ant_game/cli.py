@@ -253,7 +253,11 @@ class HumanPolicy:
         if option.recover_lower_card:
             effects.append("同じ列の下段カード1枚を手札へ戻す")
         for tag, coefficient in option.tag_prosperity:
-            effects.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに繁栄+{coefficient}")
+            detail = f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに繁栄+{coefficient}"
+            if option.tag_prosperity_divisor > 1:
+                detail += f"、合計を{option.tag_prosperity_divisor}で割って切り捨て"
+            detail += f"、上限{option.tag_prosperity_cap}" if option.tag_prosperity_cap is not None else "（上限なし）"
+            effects.append(detail)
         if getattr(option, "store_hand_card", False):
             income = getattr(option, "storage_income_per_card", 0)
             effects.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド繁栄+{income}）")
@@ -277,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.10 — 5ラウンド試作")
+    print("アリ進化ゲーム v0.11 — 5ラウンド試作")
     print("開始時に全5ラウンドの環境と、複数最適化または問題強化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)

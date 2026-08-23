@@ -70,14 +70,21 @@ class ActionOption:
     # (root tag, prosperity per board copy).  This keeps tag-scaled rewards a
     # data-defined option instead of adding card-specific effect types.
     tag_prosperity: tuple[tuple[str, int], ...] = ()
-    # Prevent a broad board from turning a conditional effect into runaway
-    # scoring.  Zero means no tag-scaled prosperity, not unlimited.
-    tag_prosperity_cap: int = 2
+    # Tag-scaled prosperity is intentionally uncapped by default.  A card may
+    # opt into a cap explicitly when its design calls for one.
+    tag_prosperity_cap: int | None = None
+    # A divisor gives content authors a simple way to keep an uncapped,
+    # board-wide payoff readable without imposing an arbitrary ceiling.
+    tag_prosperity_divisor: int = 1
     text: str = ""
 
     def __post_init__(self) -> None:
-        if self.prosperity < 0 or self.draw_cards < 0 or self.retention_bonus < 0 or self.next_candidate_bonus < 0 or self.tag_prosperity_cap < 0:
+        if self.prosperity < 0 or self.draw_cards < 0 or self.retention_bonus < 0 or self.next_candidate_bonus < 0:
             raise ValueError("action option amounts must not be negative")
+        if self.tag_prosperity_cap is not None and self.tag_prosperity_cap < 0:
+            raise ValueError("tag prosperity cap must not be negative")
+        if self.tag_prosperity_divisor < 1:
+            raise ValueError("tag prosperity divisor must be positive")
         if self.storage_income_per_card < 0:
             raise ValueError("storage income must not be negative")
         if self.store_hand_card and self.storage_income_per_card <= 0:
@@ -152,6 +159,9 @@ class ProblemRollRule:
     rolls: int = 1
     bonus: int = 0
     previous_round_bonus: int | None = None
+    # How multiple dice are combined.  Keep-highest preserves the original
+    # environmental rule; finale cards may explicitly use a summed intensity.
+    combine: str = "highest"
 
     def __post_init__(self) -> None:
         if self.rolls < 1:
@@ -160,6 +170,8 @@ class ProblemRollRule:
             raise ValueError("problem roll bonus must not be negative")
         if self.previous_round_bonus is not None and self.previous_round_bonus < 0:
             raise ValueError("previous-round bonus must not be negative")
+        if self.combine not in {"highest", "sum"}:
+            raise ValueError("problem roll combine must be 'highest' or 'sum'")
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,10 +181,15 @@ class EnvironmentCard:
     optimizations: tuple[OptimizationRequirement, ...] = ()
     problem_roll_rules: Mapping[str, ProblemRollRule] = field(default_factory=dict)
     text: str = ""
+    # Standard environments are eligible for rounds 1-4.  A finale is always
+    # placed in round 5 when a formal set contains one or more finale cards.
+    deck: str = "standard"
 
     def __post_init__(self) -> None:
         if not self.id or not self.name:
             raise ValueError("environment must have an id and name")
+        if self.deck not in {"standard", "finale"}:
+            raise ValueError("environment deck must be 'standard' or 'finale'")
         if not isinstance(self.optimizations, tuple):
             object.__setattr__(self, "optimizations", tuple(self.optimizations))
         if not isinstance(self.problem_roll_rules, dict):
@@ -228,6 +245,7 @@ class RoundContext:
     problem_selected_rolls: dict[str, int] = field(default_factory=dict)
     problem_modifiers: dict[str, int] = field(default_factory=dict)
     problem_roll_sources: dict[str, str] = field(default_factory=dict)
+    problem_roll_combines: dict[str, str] = field(default_factory=dict)
     size_before: Size = Size.SMALL
     candidate_ids: tuple[str, ...] = ()
     candidate_instances: list[CardInstance] = field(default_factory=list)
@@ -282,6 +300,7 @@ class RoundRecord:
     problem_selected_rolls: Mapping[str, int]
     problem_modifiers: Mapping[str, int]
     problem_roll_sources: Mapping[str, str]
+    problem_roll_combines: Mapping[str, str]
     defense_by_problem: Mapping[str, int]
     unblocked_by_problem: Mapping[str, int]
     penalty_by_problem: Mapping[str, int]

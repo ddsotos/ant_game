@@ -468,3 +468,23 @@ Why:
 Storage should remain tempting without making sacrificing a card automatic. Recovery and wider preview use the existing hand and column systems to add timing decisions without a new currency. Narrower Payoff tags stop strong completed cards from also being generic construction upgrades. The uncapped savanna pressure is deliberately dangerous but known one round in advance, matching the user's desired reward-risk scale.
 
 This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+
+## D-024 — v0.11: diversify roots and reserve round five for a finale
+
+Date: 2026-08-23
+
+Accepted by direct user request:
+
+- Limit every card to at most two supplied root icons, and keep every Payoff at exactly one printed root.
+- Strengthen unconditional one-root cards relative to two-root cards; in particular, raise the Harpegnathos reproductive worker while removing Oecophylla silkworks' third supplied icon.
+- Add twenty real-ant traits, weighted toward eight Chemistry and eight Morphology cards, and use Chemistry/Morphology heavily in their Payoff requirements.
+- Remove self-tag requirements from every Payoff and reduce the Matabele-ant termite raid to Sociality only.
+- Make board-tag prosperity uncapped by default. A card may use a floor divisor instead of an arbitrary ceiling.
+- Separate four finale environments from the standard environment deck. Draw four standard environments and one finale, always placing the finale in round five.
+- Keep card flavor text biological; player actions and numerical effects belong only in the effect block.
+
+Why:
+
+The former deck asked for Sociality and Resource Ecology far more often than Chemistry and Morphology, making repeated builds converge. Strong cards also supplied too many construction icons. A one-root/strong-effect exchange makes compact cards attractive without turning completed adaptations into generic infrastructure. A dedicated fifth-round forecast gives a finished board a visible, suitably large target instead of another early-game-scale check.
+
+This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
