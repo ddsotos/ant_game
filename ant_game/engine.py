@@ -156,16 +156,28 @@ class GameEngine:
             problem: disaster.problem_roll_rules.get(problem, ProblemRollRule())
             for problem in PROBLEM_IDS
         }
-        raw_rolls = {
-            problem: tuple(rng.randint(1, 4) for _ in range(rule.rolls))
-            for problem, rule in rules.items()
-        }
-        selected_rolls = {problem: max(values) for problem, values in raw_rolls.items()}
-        modifiers = {problem: rules[problem].bonus for problem in PROBLEM_IDS}
-        problem_rolls = {
-            problem: selected_rolls[problem] + modifiers[problem]
-            for problem in PROBLEM_IDS
-        }
+        raw_rolls: dict[str, tuple[int, ...]] = {}
+        selected_rolls: dict[str, int] = {}
+        modifiers: dict[str, int] = {}
+        problem_rolls: dict[str, int] = {}
+        roll_sources: dict[str, str] = {}
+        previous = state.history[-1].problem_rolls if state.history else {}
+        for problem, rule in rules.items():
+            if rule.previous_round_bonus is not None and problem in previous:
+                # Forecasted carry-over is deterministic and consumes no RNG.
+                raw_rolls[problem] = ()
+                selected_rolls[problem] = previous[problem]
+                modifiers[problem] = rule.previous_round_bonus
+                problem_rolls[problem] = previous[problem] + rule.previous_round_bonus
+                roll_sources[problem] = "previous_round"
+                continue
+            count = 1 if rule.previous_round_bonus is not None else rule.rolls
+            raw = tuple(rng.randint(1, 4) for _ in range(count))
+            raw_rolls[problem] = raw
+            selected_rolls[problem] = max(raw)
+            modifiers[problem] = rule.previous_round_bonus if rule.previous_round_bonus is not None else rule.bonus
+            problem_rolls[problem] = selected_rolls[problem] + modifiers[problem]
+            roll_sources[problem] = "d4_first_round" if rule.previous_round_bonus is not None else "dice"
         state.rng_state = rng.getstate()
         state.current_round = RoundContext(
             round_number=state.round_number + 1,
@@ -174,6 +186,7 @@ class GameEngine:
             problem_raw_rolls=raw_rolls,
             problem_selected_rolls=selected_rolls,
             problem_modifiers=modifiers,
+            problem_roll_sources=roll_sources,
             size_before=state.size,
             base_prosperity=5,
             prosperity_base=5,
@@ -195,9 +208,13 @@ class GameEngine:
             raise InvalidDecision("size may change by at most one step")
         assert state.current_round is not None
         state.size = size
-        candidates = self._draw_candidates(state, 6)
+        candidate_bonus = state.pending_candidate_bonus
+        state.pending_candidate_bonus = 0
+        draw_count = 6 + candidate_bonus
+        candidates = self._draw_candidates(state, draw_count)
         state.current_round.candidate_ids = tuple(item.instance_id for item in candidates)
         state.current_round.candidate_instances = list(candidates)
+        state.current_round.candidate_draw_count = len(candidates)
         state.phase = RoundPhase.RETAIN
         return state.current_round.candidate_ids
 
@@ -314,10 +331,11 @@ class GameEngine:
         if not 0 <= option_index < len(options):
             raise InvalidDecision("action option index is out of range")
         option = options[option_index]
-        if option.store_hand_card and target_card_id is None:
-            raise InvalidDecision("a storage effect requires a target card")
-        if not option.store_hand_card and target_card_id is not None:
-            raise InvalidDecision("this effect does not store a target card")
+        target_required = option.store_hand_card or option.recover_lower_card
+        if target_required and target_card_id is None:
+            raise InvalidDecision("this effect requires a target card")
+        if not target_required and target_card_id is not None:
+            raise InvalidDecision("this effect does not accept a target card")
         if option.store_hand_card:
             target = self._find_hand_instance(state, target_card_id)
             if target.instance_id == top.instance_id:
@@ -325,6 +343,11 @@ class GameEngine:
             target = self._take_hand_instance(state, target.instance_id)
             top.stored_cards.append(target)
             top.storage_income_per_card = option.storage_income_per_card
+        elif option.recover_lower_card:
+            if state.current_round.recovered_lower_card_id is not None:
+                raise InvalidDecision("only one lower card may be recovered per round")
+            self._recover_lower_card(state, column_index, target_card_id)
+            state.current_round.recovered_lower_card_id = target_card_id
         top.activated_round = state.current_round.round_number
         prosperity = self._apply_option(option, state)
         self._log_action(
@@ -338,8 +361,10 @@ class GameEngine:
                 "prosperity": prosperity,
                 "shields": tuple(option.shields),
                 "retention_bonus": option.retention_bonus,
+                "next_candidate_bonus": option.next_candidate_bonus,
                 "tag_prosperity": tuple(option.tag_prosperity),
                 "target_card_id": target_card_id,
+                "recover_lower_card": option.recover_lower_card,
             },
         )
         return option
@@ -422,6 +447,7 @@ class GameEngine:
             problem_raw_rolls=dict(context.problem_raw_rolls),
             problem_selected_rolls=dict(context.problem_selected_rolls),
             problem_modifiers=dict(context.problem_modifiers),
+            problem_roll_sources=dict(context.problem_roll_sources),
             defense_by_problem=defense_by_problem,
             unblocked_by_problem=unblocked_by_problem,
             penalty_by_problem=penalty_by_problem,
@@ -513,6 +539,26 @@ class GameEngine:
             for played in column.cards
         )
 
+    def _recover_lower_card(self, state: GameState, column_index: int, target_card_id: str) -> CardInstance:
+        if len(state.hand) >= self.hand_limit:
+            raise InvalidDecision("hand is full")
+        assert state.current_round is not None
+        column = state.columns[column_index]
+        for index, played in enumerate(column.cards[:-1]):
+            if played.instance_id != target_card_id and played.card_id != target_card_id:
+                continue
+            if played.is_support or self.traits[played.card_id].role is CardRole.STARTER:
+                raise InvalidDecision("support and starter cards cannot be recovered")
+            if played.stored_cards:
+                raise InvalidDecision("a stored host cannot be recovered")
+            if played.activated_round == state.current_round.round_number:
+                raise InvalidDecision("an activated card cannot be recovered this round")
+            column.cards.pop(index)
+            recovered = CardInstance(played.instance_id, played.card_id)
+            state.hand.append(recovered)
+            return recovered
+        raise InvalidDecision("target must be an eligible lower card in this column")
+
     # --------------------------------------------------------------- internals
     def _draw_candidates(self, state: GameState, count: int) -> list[CardInstance]:
         rng = random.Random()
@@ -602,6 +648,7 @@ class GameEngine:
         state.current_round.shields.extend(option.shields)
         state.current_round.bonus_draws += option.draw_cards
         state.pending_retention_bonus = min(2, state.pending_retention_bonus + option.retention_bonus)
+        state.pending_candidate_bonus = min(2, state.pending_candidate_bonus + option.next_candidate_bonus)
         if option.draw_cards:
             self._draw_to_hand(state, option.draw_cards)
         return prosperity

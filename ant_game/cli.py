@@ -129,9 +129,12 @@ class HumanPolicy:
                 elif command == "support" and len(parts) == 3:
                     engine.insert_support(state, parts[1], int(parts[2]) - 1)
                     self._show_compact_state(state, engine)
-                elif command == "activate" and len(parts) in (2, 3):
+                elif command == "activate" and len(parts) in (2, 3, 4):
                     option = int(parts[2]) - 1 if len(parts) == 3 else 0
-                    resolved = engine.activate(state, int(parts[1]) - 1, option)
+                    if len(parts) == 4:
+                        option = int(parts[2]) - 1
+                    target = parts[3] if len(parts) == 4 else None
+                    resolved = engine.activate(state, int(parts[1]) - 1, option, target_card_id=target)
                     self.say("起動: " + self._option_summary(resolved))
                     self._show_compact_state(state, engine)
                 else:
@@ -220,7 +223,7 @@ class HumanPolicy:
     def _show_help(self) -> None:
         self.say("  play CARD COLUMN       カードを列の先頭へ置く（例: play card_id 1）")
         self.say("  support CARD COLUMN    効果を捨て、タグだけを列へ差し込む")
-        self.say("  activate COLUMN [N]    先頭カードのN番目の効果を起動")
+        self.say("  activate COLUMN [N] [TARGET]  N番目の効果を起動（貯蔵・回収は対象IDも指定）")
         self.say("  card CARD              カード詳細を再表示")
         self.say("  status                 手札・列・タグ・起動効果を表示")
         self.say("  done                   環境解決へ進む")
@@ -245,6 +248,10 @@ class HumanPolicy:
             effects.append(f"即時ドロー+{option.draw_cards}")
         if option.retention_bonus:
             effects.append(f"次ラウンド保持+{option.retention_bonus}")
+        if option.next_candidate_bonus:
+            effects.append(f"次ラウンド公開候補+{option.next_candidate_bonus}")
+        if option.recover_lower_card:
+            effects.append("同じ列の下段カード1枚を手札へ戻す")
         for tag, coefficient in option.tag_prosperity:
             effects.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに繁栄+{coefficient}")
         if getattr(option, "store_hand_card", False):
@@ -270,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
     engine = GameEngine(TRAITS, DISASTERS, seed=args.seed)
     state = engine.new_game()
     policy = HumanPolicy()
-    print("アリ進化ゲーム v0.9 — 5ラウンド試作")
+    print("アリ進化ゲーム v0.10 — 5ラウンド試作")
     print("開始時に全5ラウンドの環境と、複数最適化または問題強化が公開されます。")
     engine.run(policy, state)
     policy._show_last_round(state)

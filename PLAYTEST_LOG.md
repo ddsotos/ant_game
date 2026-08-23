@@ -1036,3 +1036,25 @@ Only rule, content, browser API, compilation, syntax, and HTTP startup checks ar
 ### Design status
 
 The new reward ladder, pre-multiplier penalty, storage value, and double-root foundations are implementation hypotheses awaiting the player's session. This iteration does not count toward `promising`.
+
+## v0.10 Human-play implementation baseline — reversible adaptation and exploration
+
+### Rules/content changes
+
+- Storage income is now two prosperity per stored card from the following round. Storage cards also offer a non-storage route with the same immediate prosperity while preserving the hand card.
+- ハリアリの繁殖ワーカー may return one eligible lower card in its own column to hand. Recovery is limited to one card per round and excludes starters, support cards, storage hosts, and already-activated cards.
+- カメアリの滑空、ムネボソアリの定足数選択、ヒアリの筏循環、ムネボソアリの緊急引越し may instead add one candidate to the next round's reveal. The combined bonus caps at +2 and does not alter retention.
+- All Payoffs now print one root tag selected from the biological center of the adaptation.
+- Dry Savanna raid pressure is first 1d4+2 and later the previous round's public pre-shield raid value +2, with no upper limit.
+
+### Verification boundary
+
+Only rule, content, browser API, compilation, syntax, and HTTP startup checks are permitted for this delivery. NPC batches, strategy comparison, representative-game analysis, and human playtest were not run.
+
+### Quantitative results
+
+Not applicable: this is a requested human-play implementation baseline, not a balance iteration.
+
+### Design status
+
+Recovery, preview, the storage alternative, narrowed Payoff tags, and uncapped forecasted raid escalation are hypotheses awaiting the player's session. This iteration does not count toward `promising`.

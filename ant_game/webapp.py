@@ -125,6 +125,8 @@ class WebGameService:
             "retention_limit": min(engine.retention_limit(state), engine.hand_limit - len(state.hand)) if context else 0,
             "hand_limit": engine.hand_limit,
             "pending_retention_bonus": state.pending_retention_bonus,
+            "pending_candidate_bonus": state.pending_candidate_bonus,
+            "candidate_draw_count": context.candidate_draw_count if context else 0,
             "round_prosperity_base": round_base,
             "round_prosperity_multiplier": round_multiplier,
             "round_prosperity_delta": gain_breakdown["delta"],
@@ -219,17 +221,17 @@ class WebGameService:
         # ``optimization`` is retained as a read-only compatibility alias for
         # older debug clients; new clients must use ``optimizations``.
         legacy = optimizations[0] if optimizations else {"name": "最適化なし", "text": "", "requirements": []}
-        return {"id": environment.id, "name": localized[0] or environment.name, "text": localized[1] or environment.text, "optimizations": optimizations, "optimization": legacy, "problem_roll_rules": {problem: {"rolls": rule.rolls, "bonus": rule.bonus} for problem, rule in environment.problem_roll_rules.items()}}
+        return {"id": environment.id, "name": localized[0] or environment.name, "text": localized[1] or environment.text, "optimizations": optimizations, "optimization": legacy, "problem_roll_rules": {problem: {"rolls": rule.rolls, "bonus": rule.bonus, "previous_round_bonus": rule.previous_round_bonus} for problem, rule in environment.problem_roll_rules.items()}}
 
     @classmethod
     def _problem_data(cls, problem: str, context: Any = None, shield: int = 0) -> dict[str, Any]:
-        if context is None: return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": None, "raw_rolls": [], "selected_roll": None, "modifier": 0, "shield": shield, "unblocked": None, "penalty": None}
+        if context is None: return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": None, "raw_rolls": [], "selected_roll": None, "modifier": 0, "roll_source": None, "shield": shield, "unblocked": None, "penalty": None}
         roll = context.problem_rolls.get(problem)
         raw = tuple(context.problem_raw_rolls.get(problem, ()))
         selected = context.problem_selected_rolls.get(problem)
         modifier = context.problem_modifiers.get(problem, 0)
         unblocked = max(0, roll - shield) if roll is not None else None
-        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(raw), "selected_roll": selected, "modifier": modifier, "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(raw), "selected_roll": selected, "modifier": modifier, "roll_source": context.problem_roll_sources.get(problem, "dice"), "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
 
     @staticmethod
     def _tag_data(tag: str, count: int | None = None) -> dict[str, Any]:
@@ -258,11 +260,18 @@ class WebGameService:
         if column.top is not None and state.phase is RoundPhase.ACTIONS:
             top = column.top; card = engine.traits[top.card_id]; requirements = self._requirements_data(card.activation_requirements, activation_tags)
             already = top.activated_round == state.current_round.round_number; role_ok = card.role in (CardRole.ACTION, CardRole.STARTER); met = all(item["missing"] == 0 for item in requirements); options = card.options if met else card.fallback_options
+            recovery_targets = [{"id": played.instance_id, "name": card_name(played.card_id, played.card_id)} for played in column.cards[:-1] if not played.is_support and engine.traits[played.card_id].role is not CardRole.STARTER and not played.stored_cards and played.activated_round != state.current_round.round_number and state.current_round.recovered_lower_card_id is None]
             for option_index, option in enumerate(options):
-                has_target = bool(state.hand) if option.store_hand_card else True
+                requires_recovery = option.recover_lower_card
+                if requires_recovery:
+                    has_target = bool(recovery_targets) and len(state.hand) < engine.hand_limit
+                elif option.store_hand_card:
+                    has_target = bool(state.hand)
+                else:
+                    has_target = True
                 enabled = role_ok and not already and has_target
-                reason = "" if enabled else ("このラウンドは起動済みです。" if already else "貯蔵する手札カードを選んでください。" if option.store_hand_card and not has_target else "起動条件を満たしていません。")
-                activations.append({"option": option_index, "tier": "strong" if met else "fallback", "effect": self._option_data(option), "enabled": enabled, "requires_storage_target": option.store_hand_card, "target_candidates": [item.instance_id for item in state.hand] if option.store_hand_card else [], "reason": reason, "requirements": requirements})
+                reason = "" if enabled else ("このラウンドは起動済みです。" if already else "手札がいっぱいです。" if requires_recovery and len(state.hand) >= engine.hand_limit else "回収できる下段カードを選んでください。" if requires_recovery else "貯蔵する手札カードを選んでください。" if option.store_hand_card and not has_target else "起動条件を満たしていません。")
+                activations.append({"option": option_index, "tier": "strong" if met else "fallback", "effect": self._option_data(option), "enabled": enabled, "requires_storage_target": option.store_hand_card, "requires_recovery_target": requires_recovery, "target_candidates": recovery_targets if requires_recovery else [item.instance_id for item in state.hand] if option.store_hand_card else [], "reason": reason, "requirements": requirements})
         return {"index": index, "name": f"進化列 {index + 1}", "cards": cards, "tags": [self._tag_data(tag, count) for tag, count in sorted(all_tags.items()) if tag in TAG_INFO], "activation_tags": [self._tag_data(tag, count) for tag, count in sorted(activation_tags.items()) if tag in TAG_INFO], "capacity": engine.column_capacity, "next_pushed": card_name(column.cards[0].card_id, column.cards[0].card_id) if len(column.cards) >= engine.column_capacity else None, "activations": activations}
 
     def _card_data(self, card: TraitCard, instance_id: str) -> dict[str, Any]:
@@ -275,6 +284,8 @@ class WebGameService:
             "prosperity": option.prosperity,
             "draw_cards": option.draw_cards,
             "retention_bonus": option.retention_bonus,
+            "recover_lower_card": option.recover_lower_card,
+            "next_candidate_bonus": option.next_candidate_bonus,
             "store_hand_card": option.store_hand_card,
             "storage_income_per_card": option.storage_income_per_card,
             "tag_prosperity_cap": option.tag_prosperity_cap,
@@ -292,7 +303,7 @@ class WebGameService:
     @classmethod
     def _problem_result(cls, record: Any, problem: str) -> dict[str, Any]:
         roll = record.problem_rolls[problem]; unblocked = record.unblocked_by_problem[problem]
-        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(record.problem_raw_rolls.get(problem, ())), "selected_roll": record.problem_selected_rolls.get(problem), "modifier": record.problem_modifiers.get(problem, 0), "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(record.problem_raw_rolls.get(problem, ())), "selected_roll": record.problem_selected_rolls.get(problem), "modifier": record.problem_modifiers.get(problem, 0), "roll_source": record.problem_roll_sources.get(problem, "dice"), "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
 
 
 SERVICE = WebGameService()
@@ -307,7 +318,7 @@ def japanese_error(exc: Exception) -> str:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.9"
+    server_version = "AntGame/0.10"
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/config": self._json(SERVICE.config())

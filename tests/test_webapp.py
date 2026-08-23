@@ -1,5 +1,4 @@
 import json
-import json
 import threading
 from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
@@ -9,7 +8,7 @@ import pytest
 
 from ant_game.content import TRAIT_BY_ID
 from ant_game.engine import PROBLEM_IDS, InvalidDecision
-from ant_game.models import PlayedCard, ShieldSpec
+from ant_game.models import PlayedCard, RoundPhase, ShieldSpec
 from ant_game.webapp import RequestHandler, WebGameService
 
 
@@ -158,7 +157,18 @@ def test_specialist_tag_multiplicity_is_exposed_to_the_browser():
     assert nesting["count"] == 2
 
 
-def test_real_http_server_serves_v09_page_and_rejects_non_object_json():
+def test_targetless_activation_stays_enabled_with_an_empty_hand():
+    service = WebGameService()
+    opened = service.new_game(seed=31)
+    session = service.sessions[opened["game_id"]]
+    session.state.phase = RoundPhase.ACTIONS
+    session.state.hand.clear()
+    column = service._column_data(session.engine, session.state, 0)
+    assert column["activations"]
+    assert column["activations"][0]["enabled"] is True
+
+
+def test_real_http_server_serves_v010_page_and_rejects_non_object_json():
     server = ThreadingHTTPServer(("127.0.0.1", 0), RequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

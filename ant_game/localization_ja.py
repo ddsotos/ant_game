@@ -174,6 +174,10 @@ def option_text(option: ActionOption) -> str:
         parts.append(f"カードを今すぐ{option.draw_cards}枚引く")
     if option.retention_bonus:
         parts.append(f"次ラウンドの保持上限 +{option.retention_bonus}")
+    if option.next_candidate_bonus:
+        parts.append(f"次ラウンドの公開候補 +{option.next_candidate_bonus}枚")
+    if option.recover_lower_card:
+        parts.append("同じ列の下段カード1枚を手札へ戻す")
     for tag, coefficient in option.tag_prosperity:
         parts.append(f"盤面の{TAG_NAMES.get(tag, tag)}1つごとに繁栄 +{coefficient}")
     if getattr(option, "store_hand_card", False):

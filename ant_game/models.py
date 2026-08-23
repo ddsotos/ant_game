@@ -63,6 +63,8 @@ class ActionOption:
     # A temporary hand-building effect.  It is added to the next round's
     # retention only, then consumed when that retention choice is made.
     retention_bonus: int = 0
+    recover_lower_card: bool = False
+    next_candidate_bonus: int = 0
     store_hand_card: bool = False
     storage_income_per_card: int = 0
     # (root tag, prosperity per board copy).  This keeps tag-scaled rewards a
@@ -74,12 +76,14 @@ class ActionOption:
     text: str = ""
 
     def __post_init__(self) -> None:
-        if self.prosperity < 0 or self.draw_cards < 0 or self.retention_bonus < 0 or self.tag_prosperity_cap < 0:
+        if self.prosperity < 0 or self.draw_cards < 0 or self.retention_bonus < 0 or self.next_candidate_bonus < 0 or self.tag_prosperity_cap < 0:
             raise ValueError("action option amounts must not be negative")
         if self.storage_income_per_card < 0:
             raise ValueError("storage income must not be negative")
         if self.store_hand_card and self.storage_income_per_card <= 0:
             raise ValueError("a storage effect must have positive income")
+        if self.store_hand_card and self.recover_lower_card:
+            raise ValueError("an option cannot both store and recover a card")
         if any(not tag or coefficient < 0 for tag, coefficient in self.tag_prosperity):
             raise ValueError("tag prosperity entries must use non-negative coefficients")
 
@@ -147,12 +151,15 @@ class ProblemRollRule:
 
     rolls: int = 1
     bonus: int = 0
+    previous_round_bonus: int | None = None
 
     def __post_init__(self) -> None:
         if self.rolls < 1:
             raise ValueError("problem roll count must be positive")
         if self.bonus < 0:
             raise ValueError("problem roll bonus must not be negative")
+        if self.previous_round_bonus is not None and self.previous_round_bonus < 0:
+            raise ValueError("previous-round bonus must not be negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,9 +227,12 @@ class RoundContext:
     problem_raw_rolls: dict[str, tuple[int, ...]] = field(default_factory=dict)
     problem_selected_rolls: dict[str, int] = field(default_factory=dict)
     problem_modifiers: dict[str, int] = field(default_factory=dict)
+    problem_roll_sources: dict[str, str] = field(default_factory=dict)
     size_before: Size = Size.SMALL
     candidate_ids: tuple[str, ...] = ()
     candidate_instances: list[CardInstance] = field(default_factory=list)
+    candidate_draw_count: int = 0
+    recovered_lower_card_id: str | None = None
     retained_ids: tuple[str, ...] = ()
     action_log: list[dict[str, Any]] = field(default_factory=list)
     # Gross unmultiplied round prosperity, broken down so the UI can explain
@@ -271,6 +281,7 @@ class RoundRecord:
     problem_raw_rolls: Mapping[str, tuple[int, ...]]
     problem_selected_rolls: Mapping[str, int]
     problem_modifiers: Mapping[str, int]
+    problem_roll_sources: Mapping[str, str]
     defense_by_problem: Mapping[str, int]
     unblocked_by_problem: Mapping[str, int]
     penalty_by_problem: Mapping[str, int]
@@ -306,6 +317,8 @@ class GameState:
     # Set by an action in the current round and consumed by the next
     # retain_cards call.  It never carries beyond that one retention step.
     pending_retention_bonus: int = 0
+    # Added to the next round's six-card reveal, then consumed at choose_size.
+    pending_candidate_bonus: int = 0
     hand: list[CardInstance] = field(default_factory=list)
     columns: list[ColumnState] = field(default_factory=list)
     disaster_ids: tuple[str, ...] = ()

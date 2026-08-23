@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from types import MappingProxyType
 
 from .models import (
@@ -79,7 +80,7 @@ STARTERS: tuple[TraitCard, ...] = (
 
 # Forty normal cards. All are ACTION cards; strong options are gated by
 # accumulated roots rather than by new currencies or bespoke effect ids.
-NORMAL_TRAITS: tuple[TraitCard, ...] = (
+_NORMAL_TRAITS_RAW: tuple[TraitCard, ...] = (
     _action("oecophylla_silkworks", "Oecophylla Silkworks", frozenset({"Nesting", "Sociality"}), {}, (ActionOption(prosperity=2, text="Weave a protected canopy."),), "Oecophylla smaragdina", "Workers pull leaves together with silk produced by their larvae.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "Foundation", "Larval silk turns sociality into a living canopy nest.", root_tag_counts={"Nesting": 2}),
     _action("oecophylla_living_chain", "Oecophylla Living Chain", frozenset({"Sociality"}), {"Sociality": 2}, (ActionOption(prosperity=3, draw_cards=1, text="Form a chain and extend the route."),), "Oecophylla smaragdina", "Workers form pulling and bridging chains to move across gaps and bend leaves.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3997362/", "Payoff", "A chain is treated as coordinated social labor; the temporary route is its consequence.", (ActionOption(prosperity=1, text="Gather a small group at the route."),)),
     _action("cephalotes_aerialis", "Cephalotes Aerialis", frozenset({"Morphology"}), {}, (ActionOption(shields=(_shield("raid", amount=1),), text="Steer a fall away from a hunter."),), "Cephalotes atratus", "Wingless workers steer their descent while falling from the canopy.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2880152/", "Foundation", "The distinctive adaptation is a flattened, steerable body; descent is not a separate root."),
@@ -123,6 +124,79 @@ NORMAL_TRAITS: tuple[TraitCard, ...] = (
 )
 
 
+# v0.10 tuning is kept as explicit data overrides so the biological card
+# catalogue above stays readable while shared effect patterns remain consistent.
+_PAYOFF_ROOT: dict[str, str] = {
+    "oecophylla_living_chain": "Sociality",
+    "cephalotes_living_gate": "Morphology",
+    "pheidole_supermajor_program": "Morphology",
+    "pheidole_seed_miller": "Resource Ecology",
+    "myrmecocystus_reserve": "Resource Ecology",
+    "megaponera_field_medicine": "Chemistry",
+    "colobopsis_last_defense": "Chemistry",
+    "paraponera_poneratoxin": "Chemistry",
+    "acromyrmex_antibiotic_garden": "Chemistry",
+    "cataglyphis_sky_compass": "Resource Ecology",
+    "pheidole_raid_wall": "Sociality",
+    "pogonomyrmex_granary": "Nesting",
+    "solenopsis_dry_store": "Resource Ecology",
+    "atta_leaf_cache": "Resource Ecology",
+    "diacamma_gemma_inheritance": "Morphology",
+    "ooceraea_synchronized_brood": "Sociality",
+    "mycocepurus_clonal_garden": "Resource Ecology",
+    "cardiocondyla_dual_males": "Morphology",
+    "pristomyrmex_worker_queens": "Sociality",
+}
+
+_OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
+    "myrmecocystus_reserve": (
+        ActionOption(prosperity=3, store_hand_card=True, storage_income_per_card=2, text="Hide one hand card in a living reserve."),
+        ActionOption(prosperity=3, text="Keep the reserve mobile instead of storing a card."),
+    ),
+    "pogonomyrmex_granary": (
+        ActionOption(prosperity=5, store_hand_card=True, storage_income_per_card=2, text="Hide one hand card in a protected seed chamber."),
+        ActionOption(prosperity=5, text="Keep the harvest accessible instead of storing a card."),
+    ),
+    "solenopsis_dry_store": (
+        ActionOption(prosperity=5, store_hand_card=True, storage_income_per_card=2, text="Dry and hide one hand card for a later shortage."),
+        ActionOption(prosperity=5, text="Keep the dried food at hand instead of storing a card."),
+    ),
+    "atta_leaf_cache": (
+        ActionOption(prosperity=3, store_hand_card=True, storage_income_per_card=2, text="Hide one hand card beside the blocked entrance."),
+        ActionOption(prosperity=3, text="Carry the cached leaf onward instead of storing a card."),
+    ),
+    "harpegnathos_gamergate": (
+        ActionOption(prosperity=1, text="Let a worker become a reproductive option."),
+        ActionOption(recover_lower_card=True, text="Reverse a gene-expression state and return one lower card in this column to hand."),
+    ),
+    "cephalotes_aerialis": (
+        ActionOption(shields=(_shield("raid", amount=1),), text="Steer a fall away from a hunter."),
+        ActionOption(next_candidate_bonus=1, text="Range across the canopy and widen the next evolutionary search."),
+    ),
+    "temnothorax_quorum_nest": (
+        ActionOption(prosperity=1, text="Recruit toward the best available cavity."),
+        ActionOption(next_candidate_bonus=1, text="Send scouts farther and reveal one extra candidate next round."),
+    ),
+    "solenopsis_raft_cycling": (
+        ActionOption(prosperity=1, text="Cycle workers through a living raft."),
+        ActionOption(next_candidate_bonus=1, text="Expose cycling workers to new conditions and reveal one extra candidate next round."),
+    ),
+    "temnothorax_emergency_emigration": (
+        ActionOption(prosperity=1, text="Move before the cavity becomes unsafe."),
+        ActionOption(next_candidate_bonus=1, text="Explore alternate cavities and reveal one extra candidate next round."),
+    ),
+}
+
+NORMAL_TRAITS: tuple[TraitCard, ...] = tuple(
+    replace(
+        card,
+        root_tags=frozenset({_PAYOFF_ROOT[card.id]}) if card.id in _PAYOFF_ROOT else card.root_tags,
+        options=_OPTION_OVERRIDES.get(card.id, card.options),
+    )
+    for card in _NORMAL_TRAITS_RAW
+)
+
+
 DISASTERS: tuple[DisasterCard, ...] = (
     EnvironmentCard(
         "flood", "Flood", (
@@ -150,7 +224,7 @@ DISASTERS: tuple[DisasterCard, ...] = (
             OptimizationRequirement("フェロモン経路網", {"Chemistry": 4, "Sociality": 3}, "Formicidae", "Ants reinforce chemical trails and recruit nestmates to preserve routes.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3772619/", "A redundant chemical network replaces erased visual landmarks."),
         ), {}, "Wind and shifting substrate erase the routes used to reach food."),
     EnvironmentCard(
-        "dry_savanna", "Dry Savanna", (), {"raid": ProblemRollRule(rolls=2, bonus=0), "sanitation": ProblemRollRule(rolls=1, bonus=0)}, "Seasonal resource concentration intensifies competition between neighboring colonies."),
+        "dry_savanna", "Dry Savanna", (), {"raid": ProblemRollRule(previous_round_bonus=2), "sanitation": ProblemRollRule(rolls=1, bonus=0)}, "Seasonal resource concentration intensifies competition between neighboring colonies."),
     EnvironmentCard(
         "wet_tropical_floor", "Wet Tropical Forest Floor", (), {"raid": ProblemRollRule(rolls=1, bonus=0), "sanitation": ProblemRollRule(rolls=1, bonus=2)}, "Warm, wet litter and dense organic matter make colony sanitation unusually difficult."),
     EnvironmentCard(

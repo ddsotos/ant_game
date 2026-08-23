@@ -177,6 +177,63 @@ def test_storage_card_pays_from_next_round_and_is_discarded_with_host():
     assert any(item.card_id == "f0" for item in state.trait_discard)
 
 
+def test_recovery_returns_one_eligible_lower_card_and_is_one_per_round():
+    recovery = TraitCard(
+        "recovery", "Recovery", frozenset({"Sociality"}), CardRole.ACTION, {},
+        (ActionOption(recover_lower_card=True),),
+    )
+    game = GameEngine(cards() + [recovery], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("f0", "recovery"))
+    game.play_card(state, "f0", 0)
+    game.play_card(state, "recovery", 0)
+    game.activate(state, 0, target_card_id="f0")
+    assert all(item.instance_id != "f0" for item in state.columns[0].cards)
+    assert any(item.instance_id == "f0" for item in state.hand)
+
+
+def test_next_candidate_bonus_is_one_shot_and_does_not_change_retention():
+    bonus = TraitCard(
+        "candidate_bonus", "Candidate Bonus", frozenset({"Resource Ecology"}), CardRole.ACTION, {},
+        (ActionOption(next_candidate_bonus=2),),
+    )
+    game = GameEngine(cards() + [bonus], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("candidate_bonus",))
+    game.play_card(state, "candidate_bonus", 0)
+    game.activate(state, 0)
+    assert state.pending_candidate_bonus == 2
+    game.resolve_environment(state)
+    game.start_round(state)
+    game.choose_size(state, Size.SMALL)
+    assert state.current_round.candidate_draw_count == 8
+    assert state.pending_candidate_bonus == 0
+    assert game.retention_limit(state) == 4
+
+
+def test_previous_round_bonus_reuses_prior_problem_roll_without_a_new_die():
+    first = EnvironmentCard(
+        "d0", "Carry-over", (optimization(),),
+        {"raid": ProblemRollRule(previous_round_bonus=2)},
+    )
+    custom_disasters = [first, *disasters()[1:]]
+    game = GameEngine(cards(), custom_disasters, seed=11)
+    state = game.new_game()
+    state.disaster_ids = ("d0", "d0", "d0", "d0", "d0")
+    game.start_round(state)
+    first_roll = state.current_round.problem_rolls["raid"]
+    assert state.current_round.problem_roll_sources["raid"] == "d4_first_round"
+    assert len(state.current_round.problem_raw_rolls["raid"]) == 1
+    game.choose_size(state, Size.SMALL)
+    game.retain_cards(state, ())
+    game.resolve_environment(state)
+    game.start_round(state)
+    assert state.current_round.problem_roll_sources["raid"] == "previous_round"
+    assert state.current_round.problem_raw_rolls["raid"] == ()
+    assert state.current_round.problem_selected_rolls["raid"] == first_roll
+    assert state.current_round.problem_rolls["raid"] == first_roll + 2
+
+
 def test_at_least_five_environments_are_required():
     with pytest.raises(ValueError, match="at least five"):
         GameEngine(cards(), disasters()[:4])

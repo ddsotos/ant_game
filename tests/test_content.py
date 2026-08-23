@@ -92,7 +92,7 @@ def test_environments_have_two_or_zero_optimizations_and_problem_rules() -> None
     assert all(set(environment.problem_roll_rules) == EXPECTED_PROBLEMS for environment in DISASTERS[5:])
     assert all(len(environment.optimizations) == 2 for environment in DISASTERS[:5])
     assert all(not environment.optimizations for environment in DISASTERS[5:])
-    assert DISASTERS[5].problem_roll_rules["raid"].rolls == 2
+    assert DISASTERS[5].problem_roll_rules["raid"].previous_round_bonus == 2
     assert DISASTERS[6].problem_roll_rules["sanitation"].bonus == 2
     assert all(DISASTERS[7].problem_roll_rules[problem].bonus == 1 for problem in EXPECTED_PROBLEMS)
 
@@ -132,9 +132,26 @@ def test_storage_cards_do_not_grant_shields() -> None:
     cards = {card.id: card for card in TRAITS}
     assert all(not any(option.shields for option in cards[card_id].options) for card_id in storage_ids)
     assert all(
-        any(getattr(option, "store_hand_card", False) and getattr(option, "storage_income_per_card", 0) == 3 for option in cards[card_id].options)
+        any(getattr(option, "store_hand_card", False) and getattr(option, "storage_income_per_card", 0) == 2 for option in cards[card_id].options)
         for card_id in storage_ids
     )
+    assert all(any(not option.store_hand_card for option in cards[card_id].options) for card_id in storage_ids)
+
+
+def test_v010_special_effects_and_payoff_roots() -> None:
+    cards = {card.id: card for card in TRAITS}
+    assert all(len(card.root_tags) == 1 for card in NORMAL_TRAITS if card.design_role == "Payoff")
+    assert any(option.recover_lower_card for option in cards["harpegnathos_gamergate"].options)
+    preview_ids = {
+        "cephalotes_aerialis",
+        "temnothorax_quorum_nest",
+        "solenopsis_raft_cycling",
+        "temnothorax_emergency_emigration",
+    }
+    assert all(any(option.next_candidate_bonus == 1 for option in cards[card_id].options) for card_id in preview_ids)
+    draw_cards = {card.id for card in NORMAL_TRAITS if any(option.draw_cards for option in card.options)}
+    retention_cards = {card.id for card in NORMAL_TRAITS if any(option.retention_bonus for option in card.options)}
+    assert abs(len(draw_cards) - len(retention_cards)) <= 1
 
 
 def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> None:

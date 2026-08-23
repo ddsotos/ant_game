@@ -449,3 +449,22 @@ Why:
 Problem damage should interact with the current size decision instead of erasing prior progress after multiplication. Requirement-two and requirement-four cards need visibly different reward tiers. Double-root foundations give otherwise modest cards a durable construction role without adding bespoke card text, and delayed storage at three makes sacrificing a hand card worth considering in a five-round game.
 
 This remains an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+
+## D-023 — v0.10: reversible adaptation, exploration, and narrower Payoffs
+
+Date: 2026-08-23
+
+Accepted by direct user request:
+
+- Reduce stored-card income from three to two, and give every storage card a non-storage option with the same immediate prosperity while preserving the hand card.
+- Give the Harpegnathos reproductive-worker card a choice to return one eligible lower card in its column to hand, representing reversible gene-expression and caste state.
+- Limit lower-card recovery to once per round across the board; starters, support cards, storage hosts, and cards already activated that round are ineligible.
+- Give four movement- or exploration-grounded traits an alternative that reveals one extra evolution candidate next round. Candidate bonuses cap at +2 and never increase retention.
+- Reduce every Payoff to one printed biological root tag.
+- Replace Dry Savanna's two-die-high raid rule with an uncapped, forecastable raid value: first occurrence 1d4+2, thereafter the previous round's pre-shield raid value +2.
+
+Why:
+
+Storage should remain tempting without making sacrificing a card automatic. Recovery and wider preview use the existing hand and column systems to add timing decisions without a new currency. Narrower Payoff tags stop strong completed cards from also being generic construction upgrades. The uncapped savanna pressure is deliberately dangerous but known one round in advance, matching the user's desired reward-risk scale.
+
+This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
