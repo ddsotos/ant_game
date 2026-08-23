@@ -250,6 +250,7 @@ class RoundContext:
     candidate_ids: tuple[str, ...] = ()
     candidate_instances: list[CardInstance] = field(default_factory=list)
     candidate_draw_count: int = 0
+    retention_trade_used: bool = False
     recovered_lower_card_id: str | None = None
     retained_ids: tuple[str, ...] = ()
     action_log: list[dict[str, Any]] = field(default_factory=list)
@@ -283,6 +284,7 @@ class RoundDecision:
     size: Size
     retain_card_ids: tuple[str, ...] = ()
     actions: tuple[ActionCommand, ...] = ()
+    expand_candidates: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -293,6 +295,7 @@ class RoundRecord:
     size: Size
     candidates: tuple[str, ...]
     retained: tuple[str, ...]
+    retention_trade_used: bool
     actions: tuple[dict[str, Any], ...]
     pushed_out: tuple[str, ...]
     problem_rolls: Mapping[str, int]

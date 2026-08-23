@@ -48,6 +48,20 @@ def test_card_catalog_exposes_every_trait_with_filters_and_sources():
     assert all(card["biology_source"] for card in catalog["cards"])
 
 
+def test_environment_export_is_complete_and_chatgpt_friendly():
+    exported = WebGameService().environment_export()
+    assert exported["schema_version"] == "ant-game-environments-v0.12"
+    assert len(exported["independent_problems"]) == 2
+    assert len(exported["environment_cards"]) == 12
+    assert {item["deck"] for item in exported["environment_cards"]} == {"通常環境", "最終環境"}
+    assert all("optimizations" in item and "problem_roll_overrides" in item for item in exported["environment_cards"])
+    assert all(
+        "の" in optimization["name"]
+        for environment in exported["environment_cards"]
+        for optimization in environment["optimizations"]
+    )
+
+
 def test_problem_rolls_and_shields_are_projected_independently():
     service = WebGameService()
     result = service.new_game(seed=4)
@@ -113,6 +127,29 @@ def test_undo_restores_the_previous_action_and_failed_actions_add_nothing():
     with pytest.raises(InvalidDecision):
         service.act(game_id, "unknown", {})
     assert service.get(game_id)["state"]["can_undo"] is False
+
+
+def test_candidate_expansion_is_visible_and_undo_is_seed_reproducible():
+    service = WebGameService()
+    opened = service.new_game(seed=19)
+    game_id = opened["game_id"]
+    state = service.act(game_id, "size", {"size": "small"})["state"]
+    original_ids = [card["id"] for card in state["candidates"]]
+    assert state["can_expand_candidates"] is True
+    assert state["retention_limit"] == 4
+
+    expanded = service.act(game_id, "expand_candidates", {})["state"]
+    first_added = [card["id"] for card in expanded["candidates"]][6:]
+    assert len(expanded["candidates"]) == 8
+    assert expanded["candidate_draw_count"] == 8
+    assert expanded["retention_limit"] == 3
+    assert expanded["retention_trade_used"] is True
+    assert expanded["can_expand_candidates"] is False
+
+    restored = service.act(game_id, "undo", {})["state"]
+    assert [card["id"] for card in restored["candidates"]] == original_ids
+    repeated = service.act(game_id, "expand_candidates", {})["state"]
+    assert [card["id"] for card in repeated["candidates"]][6:] == first_added
 
 
 def test_placement_color_prediction_accounts_for_oldest_card_pushout():
@@ -181,7 +218,7 @@ def test_targetless_activation_stays_enabled_with_an_empty_hand():
     assert column["activations"][0]["enabled"] is True
 
 
-def test_real_http_server_serves_v011_page_and_rejects_non_object_json():
+def test_real_http_server_serves_v012_page_and_rejects_non_object_json():
     server = ThreadingHTTPServer(("127.0.0.1", 0), RequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -216,6 +253,10 @@ def test_real_http_server_serves_v011_page_and_rejects_non_object_json():
         with urlopen(base + "/api/cards", timeout=2) as response:
             cards = json.load(response)
             assert cards["count"] == 63
+        with urlopen(base + "/api/environment-data", timeout=2) as response:
+            exported = json.load(response)
+            assert exported["schema_version"] == "ant-game-environments-v0.12"
+            assert "attachment" in response.headers["Content-Disposition"]
         request = Request(base + "/api/new", data=b"[]", headers={"Content-Type": "application/json"}, method="POST")
         try:
             urlopen(request, timeout=2)

@@ -65,6 +65,61 @@ class WebGameService:
             "cards": cards,
         }
 
+    def environment_export(self) -> dict[str, Any]:
+        """Return a self-contained, Japanese dataset suitable for ChatGPT input."""
+
+        environments: list[dict[str, Any]] = []
+        for environment in DISASTERS:
+            localized = EVENT_NAMES.get(environment.id, (environment.name, environment.text))
+            patterns = []
+            for requirement in environment.optimizations:
+                patterns.append({
+                    "name": requirement.name,
+                    "requirements": {
+                        TAG_NAMES.get(tag, tag): amount
+                        for tag, amount in requirement.required_root_tags.items()
+                    },
+                    "source_taxon": requirement.source_taxon,
+                    "biology_basis": requirement.biology_basis,
+                    "biology_source": requirement.biology_source,
+                    "description": requirement.text,
+                })
+            roll_rules = {
+                PROBLEM_NAMES.get(problem, problem): {
+                    "dice": f"{rule.rolls}d4",
+                    "combine": "合計" if rule.combine == "sum" else "最大値",
+                    "fixed_bonus": rule.bonus,
+                    "previous_round_value_plus": rule.previous_round_bonus,
+                }
+                for problem, rule in environment.problem_roll_rules.items()
+            }
+            environments.append({
+                "id": environment.id,
+                "name": localized[0] or environment.name,
+                "description": localized[1] or environment.text,
+                "deck": "最終環境" if environment.deck == "finale" else "通常環境",
+                "optimizations": patterns,
+                "problem_roll_overrides": roll_rules,
+            })
+        return {
+            "schema_version": "ant-game-environments-v0.12",
+            "language": "ja",
+            "rules_note": (
+                "現行版に独立した災害カードはありません。環境変化カードと、"
+                "毎ラウンド個別に判定する2つの問題に分かれています。"
+            ),
+            "independent_problems": [
+                {
+                    "id": problem,
+                    "name": PROBLEM_NAMES.get(problem, problem),
+                    "default_roll": "1d4",
+                    "resolution": "n=max(0, 出目-シールド)。n=0なら減点0、それ以外は2^nを繁栄プールから減点。",
+                }
+                for problem in PROBLEM_IDS
+            ],
+            "environment_cards": environments,
+        }
+
     def new_game(self, seed: int = 0) -> dict[str, Any]:
         with self._lock:
             engine = GameEngine(TRAITS, DISASTERS, seed=int(seed))
@@ -89,6 +144,7 @@ class WebGameService:
             state = copy.deepcopy(session.state)
             if kind == "size": engine.choose_size(state, self._parse_size(payload.get("size")))
             elif kind == "retain": engine.retain_cards(state, tuple(payload.get("card_ids", ())))
+            elif kind == "expand_candidates": engine.expand_retention_candidates(state)
             elif kind == "play": engine.play_card(state, str(payload.get("card_id", "")), int(payload.get("column", -1)))
             elif kind == "support": engine.insert_support(state, str(payload.get("card_id", "")), int(payload.get("column", -1)))
             elif kind == "activate": engine.activate(state, int(payload.get("column", -1)), int(payload.get("option", 0)), payload.get("target_card_id"))
@@ -132,6 +188,12 @@ class WebGameService:
             "size_name": SIZE_LABELS.get(state.size.name, state.size.name),
             "legal_sizes": [self._size_data(engine, size) for size in engine.legal_sizes(state)] if state.phase is RoundPhase.SIZE else [],
             "retention_limit": min(engine.retention_limit(state), engine.hand_limit - len(state.hand)) if context else 0,
+            "retention_trade_used": bool(context and context.retention_trade_used),
+            "can_expand_candidates": bool(
+                context and state.phase is RoundPhase.RETAIN and not context.retention_trade_used
+                and min(engine.retention_limit(state), engine.hand_limit - len(state.hand)) >= 1
+                and len(state.trait_deck) + len(state.trait_discard) >= 2
+            ),
             "hand_limit": engine.hand_limit,
             "pending_retention_bonus": state.pending_retention_bonus,
             "pending_candidate_bonus": state.pending_candidate_bonus,
@@ -318,7 +380,7 @@ class WebGameService:
 
 
 SERVICE = WebGameService()
-ERROR_TRANSLATIONS = {"operation requires phase": "今のフェーズではその操作はできません。", "column index is out of range": "進化列の指定が正しくありません。", "card is not in hand": "そのカードは手札にありません。", "a physical card may activate only once": "同じカードは1ラウンドに1回だけ起動できます。", "activation requirements": "起動条件を満たしていません。", "other cards in the column": "列の条件を満たしていません。", "retained cards exceed": "保持できる枚数を超えています。", "retained cards must": "公開されているカードだけ保持できます。"}
+ERROR_TRANSLATIONS = {"operation requires phase": "今のフェーズではその操作はできません。", "column index is out of range": "進化列の指定が正しくありません。", "card is not in hand": "そのカードは手札にありません。", "a physical card may activate only once": "同じカードは1ラウンドに1回だけ起動できます。", "activation requirements": "起動条件を満たしていません。", "other cards in the column": "列の条件を満たしていません。", "retained cards exceed": "保持できる枚数を超えています。", "retained cards must": "公開されているカードだけ保持できます。", "retention candidate expansion may": "候補追加は各ラウンド1回だけ使えます。", "no retention slot": "候補追加に使える保持枠がありません。", "two trait cards": "候補を2枚追加できる山札がありません。"}
 
 
 def japanese_error(exc: Exception) -> str:
@@ -329,11 +391,15 @@ def japanese_error(exc: Exception) -> str:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    server_version = "AntGame/0.11"
+    server_version = "AntGame/0.12"
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/config": self._json(SERVICE.config())
         elif path == "/api/cards": self._json(SERVICE.card_catalog())
+        elif path == "/api/environment-data": self._json(
+            SERVICE.environment_export(),
+            download_name="ant_game_environment_data_v0.12.json",
+        )
         elif path.startswith("/api/game/"):
             try: self._json(SERVICE.get(path.rsplit("/", 1)[-1]))
             except InvalidDecision as exc: self._json({"error": japanese_error(exc)}, HTTPStatus.NOT_FOUND)
@@ -357,8 +423,20 @@ class RequestHandler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
         if not isinstance(payload, dict): raise ValueError("送信データの形式が正しくありません。")
         return payload
-    def _json(self, data: Any, status: HTTPStatus = HTTPStatus.OK) -> None:
-        body = json.dumps(data, ensure_ascii=False).encode("utf-8"); self.send_response(status); self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+    def _json(
+        self,
+        data: Any,
+        status: HTTPStatus = HTTPStatus.OK,
+        download_name: str | None = None,
+    ) -> None:
+        body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        if download_name:
+            self.send_header("Content-Disposition", f'attachment; filename="{download_name}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
     def _static(self, filename: str, content_type: str) -> None:
         body = (STATIC_DIR / filename).read_bytes(); self.send_response(HTTPStatus.OK); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
     def log_message(self, format: str, *args: Any) -> None: return

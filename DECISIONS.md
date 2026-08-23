@@ -488,3 +488,21 @@ Why:
 The former deck asked for Sociality and Resource Ecology far more often than Chemistry and Morphology, making repeated builds converge. Strong cards also supplied too many construction icons. A one-root/strong-effect exchange makes compact cards attractive without turning completed adaptations into generic infrastructure. A dedicated fifth-round forecast gives a finished board a visible, suitably large target instead of another early-game-scale check.
 
 This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+
+## D-025 — v0.12: exchange retention capacity for a wider preview
+
+Date: 2026-08-23
+
+Accepted by direct user request:
+
+- During retention, once per round, the player may reduce that round's retention limit by one to reveal two additional candidates immediately.
+- Require at least one effective retention slot and two drawable cards; undo restores both candidates and deterministic RNG state.
+- Treat the choice as a quality-versus-quantity exchange. It does not increase hand gain and uses no new currency.
+- Rename every Optimization as “ant name's adaptation” in Japanese, and use directly verified Japanese common names where Japanese Wikipedia identifies the exact source species.
+- Publish the current environments, Optimization requirements, sources, and independent-problem rules as downloadable Japanese JSON for external ChatGPT review.
+
+Why:
+
+The preview exchange reuses the existing retention dilemma and creates an explicit reason to accept fewer cards when the current six do not fit the board. Ant-prefixed Optimization names expose their biological model instead of presenting abstract mechanisms. The JSON export makes design review possible without reverse-engineering Python content data.
+
+This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.

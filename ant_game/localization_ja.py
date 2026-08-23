@@ -42,15 +42,15 @@ EVENT_NAMES = {
 }
 
 OPTIMIZATION_NAMES = {
-    "flood": "生体いかだ／樹冠退避",
-    "desert_heat_wave": "銀毛放熱／熱ショック応答",
-    "prolonged_drought": "地下穀倉／貯蔵個体",
-    "habitat_instability": "定足数移住／樹冠再建",
-    "landmark_loss": "天空コンパス／フェロモン経路網",
-    "army_ant_march": "社会的な迎撃／深巣退避",
-    "fungus_garden_collapse": "抗菌腺防衛／資源転換",
-    "extreme_heat_peak": "反射体表／熱ショック保護",
-    "great_flood": "生体いかだ／樹冠の巣",
+    "flood": "ヒアリの生体いかだ／カメアリの樹冠退避",
+    "desert_heat_wave": "サハラギンアリの銀毛放熱／サハラギンアリの熱ショック応答",
+    "prolonged_drought": "収穫アリの地下穀倉／ミツツボアリの貯蔵個体",
+    "habitat_instability": "ムネボソアリの定足数移住／ツムギアリの樹冠再建",
+    "landmark_loss": "砂漠アリの天空コンパス／アリのフェロモン経路網",
+    "army_ant_march": "オオズアリの社会的迎撃／アリの深巣退避",
+    "fungus_garden_collapse": "ヒメハキリアリの抗菌腺防衛／ハキリアリの資源転換",
+    "extreme_heat_peak": "サハラギンアリの反射体表／サハラギンアリの熱ショック保護",
+    "great_flood": "ヒアリの生体いかだ／ツムギアリの樹冠の巣",
 }
 
 CARD_NAMES = {
@@ -101,14 +101,14 @@ CARD_NAMES = {
     "crematogaster_sticky_gland": "シリアゲアリの粘着腺",
     "oecophylla_venom_spray": "ツムギアリの毒液噴霧",
     "formica_acid_resin": "樹脂アリの酸性樹脂",
-    "polyrhachis_polarized_eye": "潮アリの偏光眼",
+    "polyrhachis_polarized_eye": "ウミトゲアリの偏光眼",
     "odontomachus_night_vision": "アギトアリの夜間視",
     "pseudomyrmex_slender_legs": "アカシアリの細脚",
     "myrmecia_visual_hunt": "ウシアリの視覚狩り",
-    "lasius_trophallaxis": "クロヤマアリの口移し",
+    "lasius_trophallaxis": "黒庭アリの口移し",
     "azteca_domatia": "アズテカの空洞巣",
     "formica_self_medication": "クロアリの自己投薬",
-    "atta_acid_pharmacy": "ハキリアリの抗菌酸",
+    "atta_acid_pharmacy": "ケファロテスハキリアリの抗菌酸",
     "camponotus_saliva_care": "オオアリの唾液治療",
     "acromyrmex_phenylacetic_acid": "ハキリアリのフェニル酢酸",
     "atta_hard_mandible": "ハキリアリの硬質顎",

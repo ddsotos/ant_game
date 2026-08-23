@@ -1082,3 +1082,20 @@ These are static content distributions, not playtest outcomes. No win rates or g
 ### Design status
 
 The new root distribution, uncapped scaling, stronger single-root baseline, and finale thresholds are implementation hypotheses awaiting the player's session. This iteration does not count toward `promising`.
+
+## v0.12 Human-play implementation baseline — retention preview exchange and naming audit
+
+### Rules/content changes
+
+- Retention now offers a once-per-round exchange: keep one fewer card this round and reveal two additional candidates immediately.
+- The exchange is deterministic under seed, participates in full-state undo, and is disabled when no effective keep slot or fewer than two drawable cards remain.
+- Every Optimization title now includes its model ant name. The polarized-eye card uses the verified name ウミトゲアリ, the exact *Atta cephalotes* card uses ケファロテスハキリアリ, and the incorrect クロヤマアリ label was removed from the *Lasius niger* card.
+- A downloadable Japanese JSON endpoint exposes all twelve environments, Optimization patterns, biological sources, problem-roll overrides, and the two independent-problem rules.
+
+### Verification boundary
+
+Only deterministic rule tests, content invariants, browser API tests, Python/JavaScript checks, and HTTP startup checks are run for this delivery. NPC simulations, strategy comparisons, representative-game analysis, and human playtest are intentionally not run.
+
+### Design status
+
+The retention exchange is a design hypothesis: seeing two more cards must sometimes justify taking one fewer without becoming automatic. It awaits the player's browser session and does not count toward `promising`.

@@ -299,28 +299,28 @@ NORMAL_TRAITS: tuple[TraitCard, ...] = tuple(
 DISASTERS: tuple[DisasterCard, ...] = (
     EnvironmentCard(
         "flood", "Flood", (
-            OptimizationRequirement("生体いかだ", {"Sociality": 4, "Morphology": 2}, "Solenopsis invicta", "Fire ants interlock into buoyant rafts and cycle workers through the water.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3462402/", "Collective buoyancy keeps brood above floodwater."),
-            OptimizationRequirement("樹冠退避", {"Nesting": 4, "Morphology": 2, "Resource Ecology": 2}, "Cephalotes atratus and arboreal ants", "Arboreal ants steer falls and use canopy routes above inundated ground.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2880152/", "A high refuge avoids the flooded ground entirely."),
+            OptimizationRequirement("ヒアリの生体いかだ", {"Sociality": 4, "Morphology": 2}, "Solenopsis invicta", "Fire ants interlock into buoyant rafts and cycle workers through the water.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3462402/", "Collective buoyancy keeps brood above floodwater."),
+            OptimizationRequirement("カメアリの樹冠退避", {"Nesting": 4, "Morphology": 2, "Resource Ecology": 2}, "Cephalotes atratus and arboreal ants", "Arboreal ants steer falls and use canopy routes above inundated ground.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2880152/", "A high refuge avoids the flooded ground entirely."),
         ), {}, "Floodwater tears through ground routes and separates canopy refuges."),
     EnvironmentCard(
         "desert_heat_wave", "Desert Heat Wave", (
-            OptimizationRequirement("銀毛放熱", {"Morphology": 5}, "Cataglyphis bombycina", "Triangular reflective hairs reduce solar heating under intense sunlight.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4830450/", "Reflective body structure sustains a hot run."),
-            OptimizationRequirement("熱ショック応答", {"Chemistry": 5}, "Cataglyphis bombycina", "Constitutive and inducible heat-shock responses protect cellular machinery.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6003908/", "Cellular protection supports activity at extreme temperature."),
+            OptimizationRequirement("サハラギンアリの銀毛放熱", {"Morphology": 5}, "Cataglyphis bombycina", "Triangular reflective hairs reduce solar heating under intense sunlight.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4830450/", "Reflective body structure sustains a hot run."),
+            OptimizationRequirement("サハラギンアリの熱ショック応答", {"Chemistry": 5}, "Cataglyphis bombycina", "Constitutive and inducible heat-shock responses protect cellular machinery.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6003908/", "Cellular protection supports activity at extreme temperature."),
         ), {}, "Radiant heat and dry ground punish exposed foragers."),
     EnvironmentCard(
         "prolonged_drought", "Prolonged Drought", (
-            OptimizationRequirement("地下穀倉", {"Nesting": 4, "Resource Ecology": 3}, "Pogonomyrmex badius", "Workers store and process seeds in protected subterranean chambers.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5125654/", "A deep granary separates stored food from the dry surface."),
-            OptimizationRequirement("貯蔵個体", {"Sociality": 4, "Resource Ecology": 3}, "Myrmecocystus spp.", "Replete workers store liquid food in their crops for long periods.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3127378/", "Living storage buffers a colony through a dry spell."),
+            OptimizationRequirement("収穫アリの地下穀倉", {"Nesting": 4, "Resource Ecology": 3}, "Pogonomyrmex badius", "Workers store and process seeds in protected subterranean chambers.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5125654/", "A deep granary separates stored food from the dry surface."),
+            OptimizationRequirement("ミツツボアリの貯蔵個体", {"Sociality": 4, "Resource Ecology": 3}, "Myrmecocystus spp.", "Replete workers store liquid food in their crops for long periods.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3127378/", "Living storage buffers a colony through a dry spell."),
         ), {}, "A long dry spell removes easy surface food."),
     EnvironmentCard(
         "habitat_instability", "Habitat Instability", (
-            OptimizationRequirement("定足数移住", {"Sociality": 4, "Nesting": 3}, "Temnothorax albipennis", "Scouts use quorum-like feedback to choose a new cavity before the old one fails.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2817311/", "Collective site choice makes emigration timely."),
-            OptimizationRequirement("樹冠再建", {"Nesting": 4, "Sociality": 2, "Morphology": 2}, "Oecophylla smaragdina", "Workers pull leaves together with larval silk to rebuild a living canopy nest.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "A rebuilt canopy replaces a failing ground shelter."),
+            OptimizationRequirement("ムネボソアリの定足数移住", {"Sociality": 4, "Nesting": 3}, "Temnothorax albipennis", "Scouts use quorum-like feedback to choose a new cavity before the old one fails.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC2817311/", "Collective site choice makes emigration timely."),
+            OptimizationRequirement("ツムギアリの樹冠再建", {"Nesting": 4, "Sociality": 2, "Morphology": 2}, "Oecophylla smaragdina", "Workers pull leaves together with larval silk to rebuild a living canopy nest.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "A rebuilt canopy replaces a failing ground shelter."),
         ), {}, "Substrate and shelter deteriorate while colonies compete for safe cavities."),
     EnvironmentCard(
         "landmark_loss", "Landmark Loss", (
-            OptimizationRequirement("天空コンパス", {"Resource Ecology": 5, "Morphology": 1}, "Cataglyphis fortis", "Desert foragers use path integration and polarized skylight to return across featureless terrain.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC1567920/", "A celestial route preserves access when familiar landmarks disappear."),
-            OptimizationRequirement("フェロモン経路網", {"Chemistry": 4, "Sociality": 3}, "Formicidae", "Ants reinforce chemical trails and recruit nestmates to preserve routes.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3772619/", "A redundant chemical network replaces erased visual landmarks."),
+            OptimizationRequirement("砂漠アリの天空コンパス", {"Resource Ecology": 5, "Morphology": 1}, "Cataglyphis fortis", "Desert foragers use path integration and polarized skylight to return across featureless terrain.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC1567920/", "A celestial route preserves access when familiar landmarks disappear."),
+            OptimizationRequirement("アリのフェロモン経路網", {"Chemistry": 4, "Sociality": 3}, "Formicidae", "Ants reinforce chemical trails and recruit nestmates to preserve routes.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3772619/", "A redundant chemical network replaces erased visual landmarks."),
         ), {}, "Wind and shifting substrate erase the routes used to reach food."),
     EnvironmentCard(
         "dry_savanna", "Dry Savanna", (), {"raid": ProblemRollRule(previous_round_bonus=2), "sanitation": ProblemRollRule(rolls=1, bonus=0)}, "Seasonal resource concentration intensifies competition between neighboring colonies."),
@@ -330,23 +330,23 @@ DISASTERS: tuple[DisasterCard, ...] = (
         "urban_disturbance", "Urban Disturbance", (), {"raid": ProblemRollRule(rolls=1, bonus=1), "sanitation": ProblemRollRule(rolls=1, bonus=1)}, "Crowding, invasive neighbors, waste, and broken nesting sites amplify both recurring problems."),
     EnvironmentCard(
         "army_ant_march", "Army Ant March", (
-            OptimizationRequirement("社会的な迎撃", {"Sociality": 8}, "Pheidole obtusospinosa", "Workers and specialized soldiers coordinate layered defenses against army-ant raids.", "https://academic.oup.com/jinsectscience/article/10/1/1/820704", "A whole-colony defense must absorb a massed army-ant advance."),
-            OptimizationRequirement("深巣退避", {"Nesting": 8}, "Formicidae (deep-nesting ants)", "Some colonies use protected chambers and narrow entrances to reduce access by invading ants.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC528881/", "A deeply protected nest avoids the exposed front of the march."),
+            OptimizationRequirement("オオズアリの社会的迎撃", {"Sociality": 8}, "Pheidole obtusospinosa", "Workers and specialized soldiers coordinate layered defenses against army-ant raids.", "https://academic.oup.com/jinsectscience/article/10/1/1/820704", "A whole-colony defense must absorb a massed army-ant advance."),
+            OptimizationRequirement("アリの深巣退避", {"Nesting": 8}, "Formicidae (deep-nesting ants)", "Some colonies use protected chambers and narrow entrances to reduce access by invading ants.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC528881/", "A deeply protected nest avoids the exposed front of the march."),
         ), {"raid": ProblemRollRule(bonus=3), "sanitation": ProblemRollRule(bonus=2)}, "A column of army ants sweeps across the habitat, forcing a mature colony to commit its defenses.", deck="finale"),
     EnvironmentCard(
         "fungus_garden_collapse", "Fungus Garden Collapse", (
-            OptimizationRequirement("抗菌腺防衛", {"Chemistry": 8}, "Acromyrmex octospinosus", "Metapleural and symbiont-derived compounds suppress fungal pathogens in leafcutter gardens.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/", "Chemical protection can hold a cultivated garden together during a pathogen surge."),
-            OptimizationRequirement("資源転換", {"Resource Ecology": 8}, "Atta colombica", "Leafcutting ants continually process plant material into a maintained fungal cultivar.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC9019514/", "A colony with broad resource processing can rebuild its food base after collapse."),
+            OptimizationRequirement("ヒメハキリアリの抗菌腺防衛", {"Chemistry": 8}, "Acromyrmex octospinosus", "Metapleural and symbiont-derived compounds suppress fungal pathogens in leafcutter gardens.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/", "Chemical protection can hold a cultivated garden together during a pathogen surge."),
+            OptimizationRequirement("ハキリアリの資源転換", {"Resource Ecology": 8}, "Atta colombica", "Leafcutting ants continually process plant material into a maintained fungal cultivar.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC9019514/", "A colony with broad resource processing can rebuild its food base after collapse."),
         ), {"raid": ProblemRollRule(bonus=2), "sanitation": ProblemRollRule(rolls=2, combine="sum")}, "A pathogenic wave overwhelms ordinary garden maintenance and spreads through cultivated chambers.", deck="finale"),
     EnvironmentCard(
         "extreme_heat_peak", "Extreme Heat Peak", (
-            OptimizationRequirement("反射体表", {"Morphology": 8}, "Cataglyphis bombycina", "Reflective triangular hairs reduce solar heat load during exposed desert activity.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4830450/", "Body form must carry the colony through a heat peak beyond ordinary activity."),
-            OptimizationRequirement("熱ショック保護", {"Chemistry": 8}, "Cataglyphis bombycina", "Heat-shock proteins and molecular chaperones protect cellular machinery under thermal stress.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6003908/", "Cellular chemistry offers a second route through extreme heat."),
+            OptimizationRequirement("サハラギンアリの反射体表", {"Morphology": 8}, "Cataglyphis bombycina", "Reflective triangular hairs reduce solar heat load during exposed desert activity.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4830450/", "Body form must carry the colony through a heat peak beyond ordinary activity."),
+            OptimizationRequirement("サハラギンアリの熱ショック保護", {"Chemistry": 8}, "Cataglyphis bombycina", "Heat-shock proteins and molecular chaperones protect cellular machinery under thermal stress.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6003908/", "Cellular chemistry offers a second route through extreme heat."),
         ), {"raid": ProblemRollRule(bonus=2), "sanitation": ProblemRollRule(bonus=3)}, "A final burst of heat makes exposed bodies and cellular chemistry fail at once.", deck="finale"),
     EnvironmentCard(
         "great_flood", "Great Flood", (
-            OptimizationRequirement("生体いかだ", {"Sociality": 8}, "Solenopsis invicta", "Fire ants interlock into buoyant rafts and continually exchange positions in floodwater.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3462402/", "Collective buoyancy keeps brood and workers above a landscape-wide flood."),
-            OptimizationRequirement("樹冠の巣", {"Nesting": 8}, "Oecophylla smaragdina", "Weaver ants build connected leaf nests high in vegetation using larval silk.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "A mature canopy nest provides refuge when all ground routes disappear."),
+            OptimizationRequirement("ヒアリの生体いかだ", {"Sociality": 8}, "Solenopsis invicta", "Fire ants interlock into buoyant rafts and continually exchange positions in floodwater.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3462402/", "Collective buoyancy keeps brood and workers above a landscape-wide flood."),
+            OptimizationRequirement("ツムギアリの樹冠の巣", {"Nesting": 8}, "Oecophylla smaragdina", "Weaver ants build connected leaf nests high in vegetation using larval silk.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "A mature canopy nest provides refuge when all ground routes disappear."),
         ), {"raid": ProblemRollRule(rolls=2, combine="sum"), "sanitation": ProblemRollRule(bonus=3)}, "A landscape-wide flood removes ground routes and isolates every remaining refuge.", deck="finale"),
 )
 

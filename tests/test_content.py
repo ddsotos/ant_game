@@ -194,9 +194,21 @@ def test_specialized_foundations_can_supply_two_copies_of_one_root() -> None:
 
 def test_optimization_names_are_player_facing_japanese() -> None:
     assert all(
-        all(requirement.name and not any(char.isascii() and char.isalpha() for char in requirement.name) for requirement in environment.optimizations)
+        all(
+            requirement.name
+            and "の" in requirement.name
+            and not any(char.isascii() and char.isalpha() for char in requirement.name)
+            for requirement in environment.optimizations
+        )
         for environment in DISASTERS
     )
+
+
+def test_wikipedia_confirmed_and_corrected_japanese_ant_names() -> None:
+    assert CARD_NAMES["polyrhachis_polarized_eye"] == "ウミトゲアリの偏光眼"
+    assert CARD_NAMES["atta_acid_pharmacy"] == "ケファロテスハキリアリの抗菌酸"
+    # クロヤマアリ is Formica japonica, not the Lasius niger source taxon.
+    assert CARD_NAMES["lasius_trophallaxis"] == "黒庭アリの口移し"
 
 
 def test_card_texts_describe_biology_not_game_operations() -> None:

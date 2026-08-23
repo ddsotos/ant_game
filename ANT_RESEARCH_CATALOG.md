@@ -2,6 +2,14 @@
 
 この文書は、ゲーム内カードと「最適化」の題材を追跡するための出典台帳である。カード効果の強さを証明するものではない。種まで特定できない題材は、属またはグループとして明記する。
 
+## v0.12 日本語名監査
+
+日本語版Wikipediaで種と和名を直接対応づけられたものは正式な和名を優先する。`Polyrhachis sokolova` は「ウミトゲアリ」、`Atta cephalotes` は「ケファロテスハキリアリ」、`Oecophylla smaragdina` は「ツムギアリ」、`Solenopsis invicta` は「ヒアリ」とした。和名を確認できない種は、従来どおり短いゲーム用和訳を用い、学名を出典欄に残す。
+
+なお「クロヤマアリ」は `Formica japonica` の和名であり、`Lasius niger` のカード名には使わない。`Lasius niger` は既存のゲーム用和訳「黒庭アリ」に統一した。ハキリアリ類は日本語版Wikipediaでも種ごとの和名が乏しい旨が説明されているため、属・群名または短いゲーム用和訳を維持する。
+
+名称確認: [ウミトゲアリ](https://ja.wikipedia.org/wiki/ウミトゲアリ) / [ハキリアリ](https://ja.wikipedia.org/wiki/ハキリアリ) / [ツムギアリ](https://ja.wikipedia.org/wiki/ツムギアリ) / [ヒアリ](https://ja.wikipedia.org/wiki/ヒアリ) / [クロヤマアリ](https://ja.wikipedia.org/wiki/クロヤマアリ)
+
 ## 現行カード題材
 
 | 種・属・群 | 実在形質の要約 | 現行カード | 最適化候補 | 既存出典 | 追加案 |
@@ -83,14 +91,14 @@ v0.11では、化学8・形態8・資源生態2・社会性1・巣作り1の単�
 | シリアゲアリの粘着腺 | 粘着性防御分泌物 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4551136/ |
 | ツムギアリの毒液噴霧 | 咬みつきと毒液噴霧 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3997362/ |
 | 樹脂アリの酸性樹脂 | 樹脂と化学防御の併用 | https://pmc.ncbi.nlm.nih.gov/articles/PMC2275180/ |
-| 潮アリの偏光眼 | 樹冠での偏光・視覚定位 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4523029/ |
+| ウミトゲアリの偏光眼 | 樹冠での偏光・視覚定位 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4523029/ |
 | アギトアリの夜間視 | 低照度での視覚活動 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4633845/ |
 | アカシアリの細脚 | 植物上を走る細長い脚 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3883824/ |
 | ウシアリの視覚狩り | 視覚的な追跡狩り | https://pmc.ncbi.nlm.nih.gov/articles/PMC3540202/ |
-| クロヤマアリの口移し | 液体食料の栄養交換 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4681411/ |
+| 黒庭アリの口移し | 液体食料の栄養交換 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4681411/ |
 | アズテカの空洞巣 | Cecropiaの中空葉柄利用 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3494260/ |
 | クロアリの自己投薬 | 病原菌への抗菌物質摂取 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3711905/ |
-| ハキリアリの抗菌酸 | 腺・共生菌由来の抗菌物質 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/ |
+| ケファロテスハキリアリの抗菌酸 | 腺・共生菌由来の抗菌物質 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/ |
 | オオアリの唾液治療 | 口腔分泌物による創傷処置 | https://pmc.ncbi.nlm.nih.gov/articles/PMC10756881/ |
 | ハキリアリのフェニル酢酸 | 後胸腺の抗真菌性分泌物 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3418327/ |
 | ハキリアリの硬質顎 | 葉の切断と菌園への加工 | https://pmc.ncbi.nlm.nih.gov/articles/PMC9019514/ |

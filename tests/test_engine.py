@@ -211,6 +211,49 @@ def test_next_candidate_bonus_is_one_shot_and_does_not_change_retention():
     assert game.retention_limit(state) == 4
 
 
+def test_retention_trade_reveals_two_seeded_candidates_for_one_keep_slot():
+    first_game = engine()
+    second_game = engine()
+    first = first_game.new_game()
+    second = second_game.new_game()
+    for game, state in ((first_game, first), (second_game, second)):
+        game.start_round(state)
+        game.choose_size(state, Size.SMALL)
+        state.pending_retention_bonus = 2
+
+    first_added = first_game.expand_retention_candidates(first)
+    second_added = second_game.expand_retention_candidates(second)
+    assert first_added == second_added
+    assert len(first_added) == 2
+    assert first.current_round.candidate_draw_count == 8
+    assert len(first.current_round.candidate_ids) == 8
+    assert first_game.retention_limit(first) == 5  # Small 4 + bonus 2 - trade 1
+    with pytest.raises(InvalidDecision, match="only once"):
+        first_game.expand_retention_candidates(first)
+
+    first_game.retain_cards(first, first.current_round.candidate_ids[:5])
+    record = first_game.resolve_environment(first)
+    assert record.retention_trade_used is True
+
+
+def test_retention_trade_requires_an_effective_keep_slot():
+    game = engine()
+    state = game.new_game()
+    game.start_round(state)
+    game.choose_size(state, Size.SMALL)
+    state.hand = [CardInstance(f"hand-{index}", "f0") for index in range(game.hand_limit)]
+    with pytest.raises(InvalidDecision, match="no retention slot"):
+        game.expand_retention_candidates(state)
+
+
+def test_round_decision_can_request_retention_trade():
+    game = engine()
+    state = game.new_game()
+    record = game.resolve_round(state, RoundDecision(Size.SMALL, expand_candidates=True))
+    assert len(record.candidates) == 8
+    assert record.retention_trade_used is True
+
+
 def test_previous_round_bonus_reuses_prior_problem_roll_without_a_new_die():
     first = EnvironmentCard(
         "d0", "Carry-over", (optimization(),),

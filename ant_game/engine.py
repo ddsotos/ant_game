@@ -6,6 +6,7 @@ import copy
 import random
 from collections import Counter
 from collections.abc import Iterable, Sequence
+from dataclasses import fields
 from typing import Any
 
 from .models import (
@@ -150,7 +151,8 @@ class GameEngine:
             raise InvalidDecision("state has no valid current disaster") from exc
 
     def retention_limit(self, state: GameState) -> int:
-        return self.retention_curve[state.size] + state.pending_retention_bonus
+        spent = int(bool(state.current_round and state.current_round.retention_trade_used))
+        return max(0, self.retention_curve[state.size] + state.pending_retention_bonus - spent)
 
     # ------------------------------------------------------------- round flow
     def start_round(self, state: GameState) -> EnvironmentCard:
@@ -260,6 +262,25 @@ class GameEngine:
         state.pending_retention_bonus = 0
         state.phase = RoundPhase.ACTIONS
         return requested
+
+    def expand_retention_candidates(self, state: GameState) -> tuple[str, ...]:
+        """Spend one keep slot to reveal two additional candidates this round."""
+
+        self._require_phase(state, RoundPhase.RETAIN)
+        assert state.current_round is not None
+        if state.current_round.retention_trade_used:
+            raise InvalidDecision("retention candidate expansion may be used only once")
+        effective_limit = min(self.retention_limit(state), self.hand_limit - len(state.hand))
+        if effective_limit < 1:
+            raise InvalidDecision("no retention slot is available for candidate expansion")
+        if len(state.trait_deck) + len(state.trait_discard) < 2:
+            raise InvalidDecision("two trait cards are required for candidate expansion")
+        added = self._draw_candidates(state, 2)
+        state.current_round.candidate_instances.extend(added)
+        state.current_round.candidate_ids += tuple(item.instance_id for item in added)
+        state.current_round.candidate_draw_count += len(added)
+        state.current_round.retention_trade_used = True
+        return tuple(item.instance_id for item in added)
 
     def play_card(self, state: GameState, card_id: str, column_index: int) -> tuple[str, ...]:
         self._require_phase(state, RoundPhase.ACTIONS)
@@ -458,6 +479,7 @@ class GameEngine:
             size=state.size,
             candidates=context.candidate_ids,
             retained=context.retained_ids,
+            retention_trade_used=context.retention_trade_used,
             actions=tuple(context.action_log),
             pushed_out=pushed_out,
             problem_rolls=dict(context.problem_rolls),
@@ -501,6 +523,8 @@ class GameEngine:
         working = copy.deepcopy(state)
         self.start_round(working)
         self.choose_size(working, decision.size)
+        if decision.expand_candidates:
+            self.expand_retention_candidates(working)
         self.retain_cards(working, decision.retain_card_ids)
         for action in decision.actions:
             self._apply_command(working, action)
@@ -514,6 +538,8 @@ class GameEngine:
             self.start_round(state)
             size = policy.choose_size(state, self) if hasattr(policy, "choose_size") else state.size
             self.choose_size(state, size)
+            if hasattr(policy, "choose_candidate_expansion") and policy.choose_candidate_expansion(state, self):
+                self.expand_retention_candidates(state)
             candidates = tuple(state.current_round.candidate_ids) if state.current_round else ()
             retained = policy.choose_retained(state, candidates, self) if hasattr(policy, "choose_retained") else ()
             self.retain_cards(state, retained)
@@ -704,8 +730,8 @@ class GameEngine:
 
     @staticmethod
     def _commit(target: GameState, source: GameState) -> None:
-        target.__dict__.clear()
-        target.__dict__.update(source.__dict__)
+        for item in fields(GameState):
+            setattr(target, item.name, getattr(source, item.name))
 
 
 __all__ = ["GameEngine", "InvalidDecision", "PROBLEM_IDS"]
