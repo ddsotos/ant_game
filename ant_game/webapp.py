@@ -56,6 +56,15 @@ class WebGameService:
     def config(self) -> dict[str, Any]:
         return {"tags": [self._tag_data(tag) for tag in TAG_INFO], "environments": [self._environment_data(item) for item in DISASTERS], "problems": [self._problem_data(problem) for problem in PROBLEM_IDS]}
 
+    def card_catalog(self) -> dict[str, Any]:
+        cards = [self._card_data(card, card.id) for card in TRAITS]
+        return {
+            "count": len(cards),
+            "tags": [self._tag_data(tag) for tag in TAG_INFO],
+            "roles": sorted({card["role"] for card in cards}),
+            "cards": cards,
+        }
+
     def new_game(self, seed: int = 0) -> dict[str, Any]:
         with self._lock:
             engine = GameEngine(TRAITS, DISASTERS, seed=int(seed))
@@ -275,7 +284,8 @@ class WebGameService:
         return {"index": index, "name": f"進化列 {index + 1}", "cards": cards, "tags": [self._tag_data(tag, count) for tag, count in sorted(all_tags.items()) if tag in TAG_INFO], "activation_tags": [self._tag_data(tag, count) for tag, count in sorted(activation_tags.items()) if tag in TAG_INFO], "capacity": engine.column_capacity, "next_pushed": card_name(column.cards[0].card_id, column.cards[0].card_id) if len(column.cards) >= engine.column_capacity else None, "activations": activations}
 
     def _card_data(self, card: TraitCard, instance_id: str) -> dict[str, Any]:
-        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "subject_taxon": card.source_taxon, "biology_basis": card.biology_basis, "biology_source": card.biology_source, "tags": [self._tag_data(tag, card.counted_root_tags[tag]) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": ROLE_NAMES.get(card.design_role, card.design_role), "options": [self._option_data(option) for option in card.options], "fallback_options": [self._option_data(option) for option in card.fallback_options]}
+        role = "初期形質" if card.role is CardRole.STARTER else ROLE_NAMES.get(card.design_role, card.design_role)
+        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "subject_taxon": card.source_taxon, "biology_basis": card.biology_basis, "biology_source": card.biology_source, "tags": [self._tag_data(tag, card.counted_root_tags[tag]) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": role, "options": [self._option_data(option) for option in card.options], "fallback_options": [self._option_data(option) for option in card.fallback_options]}
 
     @staticmethod
     def _option_data(option: ActionOption) -> dict[str, Any]:
@@ -323,11 +333,14 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/config": self._json(SERVICE.config())
+        elif path == "/api/cards": self._json(SERVICE.card_catalog())
         elif path.startswith("/api/game/"):
             try: self._json(SERVICE.get(path.rsplit("/", 1)[-1]))
             except InvalidDecision as exc: self._json({"error": japanese_error(exc)}, HTTPStatus.NOT_FOUND)
         elif path in ("/", "/index.html"): self._static("index.html", "text/html; charset=utf-8")
+        elif path in ("/cards", "/cards.html"): self._static("cards.html", "text/html; charset=utf-8")
         elif path == "/app.js": self._static("app.js", "text/javascript; charset=utf-8")
+        elif path == "/cards.js": self._static("cards.js", "text/javascript; charset=utf-8")
         elif path == "/style.css": self._static("style.css", "text/css; charset=utf-8")
         else: self.send_error(HTTPStatus.NOT_FOUND)
     def do_POST(self) -> None:  # noqa: N802

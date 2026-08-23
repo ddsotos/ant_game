@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>アリ進化ゲーム v0.11</title>
+  <title>カード一覧 | アリ進化ゲーム v0.11</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -16,17 +16,20 @@
     <symbol id="symbol-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></symbol>
   </svg>
   <main>
-    <button id="undo" class="quiet hidden" disabled>一手戻す</button>
-    <header><div><span class="eyebrow">5ラウンド・環境変化と適応</span><h1>アリ進化ゲーム</h1></div><div class="header-actions"><a class="button-link quiet" href="/cards" target="_blank" rel="noopener">カード一覧</a><button id="restart" class="quiet hidden">新しいゲーム</button></div></header>
-    <section id="setup" class="panel setup"><h2>ゲームを始める</h2><p>5つの環境変化予報と、毎ラウンドの2問題を見ながら進化させます。</p><label>プレイ用 seed<input id="seed" type="number" value="42"></label><button id="start" class="primary">ゲームを開始</button></section>
-    <div id="game" class="hidden">
-      <section id="forecast" class="panel" aria-label="5ラウンドの環境変化予報"></section>
-      <section id="overview" class="panel"></section>
-      <div id="notice" role="status" aria-live="polite"></div>
-      <section id="decision" class="panel"></section>
-      <section id="board" class="panel"></section>
-    </div>
+    <header>
+      <div><span class="eyebrow">形質カード資料</span><h1>カード一覧</h1></div>
+      <a class="button-link quiet" href="/">ゲームへ戻る</a>
+    </header>
+    <section class="panel catalog-tools" aria-label="カードの絞り込み">
+      <label>名前・説明・題材を検索<input id="search" type="search" placeholder="例：繁殖、シールド、ハキリアリ"></label>
+      <label>カードのタグ<select id="tag-filter"><option value="">すべてのタグ</option></select></label>
+      <label>役割<select id="role-filter"><option value="">すべての役割</option></select></label>
+    </section>
+    <section class="panel">
+      <div class="catalog-summary"><h2>形質カード</h2><strong id="card-count">読み込み中…</strong></div>
+      <div id="catalog" class="cards" aria-live="polite"></div>
+    </section>
   </main>
-  <script src="/app.js"></script>
+  <script src="/cards.js"></script>
 </body>
 </html>

@@ -38,6 +38,16 @@ def test_sociality_has_japanese_name_and_dedicated_symbol():
     assert sociality["color"]
 
 
+def test_card_catalog_exposes_every_trait_with_filters_and_sources():
+    catalog = WebGameService().card_catalog()
+    assert catalog["count"] == len(catalog["cards"]) == 63
+    assert len(catalog["tags"]) == 5
+    assert {"基盤", "橋渡し", "完成形", "初期形質"} <= set(catalog["roles"])
+    assert all(card["name"] and card["text"] for card in catalog["cards"])
+    assert all("requirements" in card and "options" in card for card in catalog["cards"])
+    assert all(card["biology_source"] for card in catalog["cards"])
+
+
 def test_problem_rolls_and_shields_are_projected_independently():
     service = WebGameService()
     result = service.new_game(seed=4)
@@ -186,6 +196,14 @@ def test_real_http_server_serves_v011_page_and_rejects_non_object_json():
             javascript = response.read().decode("utf-8")
             assert "今ラウンドの繁栄・シールド" in javascript
             assert "最終環境" in javascript
+        with urlopen(base + "/cards", timeout=2) as response:
+            catalog_page = response.read().decode("utf-8")
+            assert "カード一覧" in catalog_page
+            assert 'id="tag-filter"' in catalog_page
+        with urlopen(base + "/cards.js", timeout=2) as response:
+            catalog_javascript = response.read().decode("utf-8")
+            assert "/api/cards" in catalog_javascript
+            assert "自身のタグは数えない" in catalog_javascript
         with urlopen(base + "/style.css", timeout=2) as response:
             css = response.read().decode("utf-8")
             assert "min-height:44px" in css
@@ -195,6 +213,9 @@ def test_real_http_server_serves_v011_page_and_rejects_non_object_json():
             assert len(config["tags"]) == 5
             assert len(config["environments"]) >= 5
             assert len(config["problems"]) == 2
+        with urlopen(base + "/api/cards", timeout=2) as response:
+            cards = json.load(response)
+            assert cards["count"] == 63
         request = Request(base + "/api/new", data=b"[]", headers={"Content-Type": "application/json"}, method="POST")
         try:
             urlopen(request, timeout=2)
