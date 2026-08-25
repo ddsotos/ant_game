@@ -1,0 +1,52 @@
+{
+  "schema_version": "ant-game-trait-card-patch-v0.16-balance",
+  "base_file": "TRAIT_CARD_DATA_v0.15_COMPLETE.json",
+  "result_file": "TRAIT_CARD_DATA_v0.16_COMPLETE.json",
+  "changes": [
+    {
+      "id": "pheidole_supermajor_program",
+      "name": "オオズアリの超大型兵隊",
+      "note": "要求合計3のシールド3を2へ。繁栄3は維持。"
+    },
+    {
+      "id": "megaponera_field_medicine",
+      "name": "マタベレアリの野戦治療",
+      "note": "要求合計3のシールド3を2へ。繁栄3は維持。"
+    },
+    {
+      "id": "colobopsis_last_defense",
+      "name": "爆発アリの最終防衛",
+      "note": "要求合計3のシールド3を2へ。繁栄3は維持。"
+    },
+    {
+      "id": "acromyrmex_antibiotic_garden",
+      "name": "ハキリアリの抗菌菌園",
+      "note": "要求合計3のシールド3を2へ。繁栄3は維持。"
+    },
+    {
+      "id": "paraponera_poneratoxin",
+      "name": "サシハリアリの強毒",
+      "note": "形態3要求は序盤供給が薄いことを考慮し、繁栄3＋襲撃3の選択肢を据え置き。"
+    },
+    {
+      "id": "pheidole_bite_muscle",
+      "name": "オオズアリの咬合筋",
+      "note": "化学2＋社会性2（合計4）。繁栄5のみ→繁栄3＋襲撃3。"
+    },
+    {
+      "id": "melissotarsus_living_wood_galleries",
+      "name": "メリソタルスの生木坑道",
+      "note": "巣作り2＋形態2。形態要求の重さを評価し、繁栄5＋環境による繁栄減点2軽減。"
+    },
+    {
+      "id": "allomerus_fungal_trap_gallery",
+      "name": "アロメルスの菌糸トラップ回廊",
+      "note": "巣作り3＋社会性2（合計5）。繁栄5＋襲撃2へ強化。"
+    },
+    {
+      "id": "formica_thatch_thermostat",
+      "name": "ヤマアリの茅葺き温室巣",
+      "note": "巣作り3。繁栄5＋環境による繁栄減点2軽減。"
+    }
+  ]
+}
