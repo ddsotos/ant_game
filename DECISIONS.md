@@ -506,3 +506,36 @@ Why:
 The preview exchange reuses the existing retention dilemma and creates an explicit reason to accept fewer cards when the current six do not fit the board. Ant-prefixed Optimization names expose their biological model instead of presenting abstract mechanisms. The JSON export makes design review possible without reverse-engineering Python content data.
 
 This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+## D-026 — v0.16カード効果は既存の解決順へ統合する
+
+Date: 2026-08-25
+
+Accepted by direct user request:
+
+- 衛生・襲撃脆弱性は問題の実効出目へ加算し、その後に同種シールドを適用する。
+- 環境による繁栄損失軽減は、環境最適化失敗による半減損失だけを軽減し、問題ペナルティや過去ラウンドの得点獲得処理を変更しない。
+- サイズ依存、押し出し時、保持交換強化はカードID分岐ではなく汎用データとして実装する。
+- 押し出し時効果は実際に追放された物理カードへ1回だけ発火し、伏せ貯蔵カードや候補捨てには発火しない。
+- v0.16調整に従い、要求合計3の完成形は原則として繁栄3＋シールド2とし、形態3要求のサシハリアリだけシールド3を維持する。
+
+Why:
+
+新しい管理資源やカード固有処理を増やさず、既存の問題・最適化・サイズ・押し出し・保持交換の判断へ効果を接続できるため。
+
+This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+
+## D-027 — v0.16完全版JSONをカード定義の正本にする
+
+Date: 2026-08-25
+
+Accepted by direct user request:
+
+- チェックサム `7d63c54845081860df9493992938407720230059b6641c3f4653baa8428f82d4` の完全版JSONを読み込み、初期形質3枚と通常カード105枚を実装へ反映する。
+- 最適化のない環境での繁栄置換と、サイズ依存の候補追加を汎用効果として追加する。サイズ別に記載された値は基礎値への加算ではなく、選択サイズにおける置換値として解決する。
+- カード一覧APIと日本語表示は、完全版JSONの名称・生態説明・効果を公開する。
+
+Why:
+
+不完全な復元データやカードID別の例外処理を避け、デザイン資料と実行時カードを同じ版管理データから再現するため。
+
+This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.

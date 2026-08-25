@@ -13,6 +13,8 @@ function requirementsHTML(requirements) {
 
 function effectText(effect) {
   const parts = [];
+  const problemNames = {raid: "襲撃", sanitation: "衛生"};
+  const sizeNames = {small: "小型", medium: "中型", large: "大型", giant: "超大型"};
   if (effect.prosperity) parts.push(`繁栄 +${effect.prosperity}`);
   if (effect.draw_cards) parts.push(`カードを${effect.draw_cards}枚ドロー`);
   if (effect.retention_bonus) parts.push(`次ラウンドの保持 +${effect.retention_bonus}`);
@@ -24,7 +26,19 @@ function effectText(effect) {
     const cap = effect.tag_prosperity_cap == null ? "（上限なし）" : `（上限${effect.tag_prosperity_cap}）`;
     parts.push(`盤面の${bonus.name || bonus.tag}1つごとに繁栄 +${bonus.coefficient}${divisor}${cap}`);
   });
-  (effect.shields || []).forEach((shield) => parts.push(`${shield.name}シールド +${shield.amount}`));
+  (effect.shields || []).forEach((shield) => parts.push(`${shield.name || problemNames[shield.problem_id] || shield.problem_id}シールド +${shield.amount}`));
+  (effect.vulnerabilities || []).forEach((item) => parts.push(`${item.name || problemNames[item.problem_id] || item.problem_id}脆弱性 +${item.amount}`));
+  if (effect.environment_prosperity_loss_reduction) parts.push(`最適化失敗時の繁栄損失を${effect.environment_prosperity_loss_reduction}軽減`);
+  if (effect.candidate_bonus_when_reduce_retention_for_more_candidates) parts.push(`保持上限−1で候補追加を使う時、公開候補 +${effect.candidate_bonus_when_reduce_retention_for_more_candidates}枚`);
+  if (effect.prosperity_if_environment_has_no_optimizations != null) parts.push(`最適化のない環境では繁栄 +${effect.prosperity_if_environment_has_no_optimizations}`);
+  (effect.size_effects || []).forEach((sizeEffect) => {
+    const details = [`繁栄 +${sizeEffect.prosperity}`];
+    (sizeEffect.shields || []).forEach((shield) => details.push(`${shield.name || problemNames[shield.problem_id] || shield.problem_id}シールド +${shield.amount}`));
+    (sizeEffect.vulnerabilities || []).forEach((item) => details.push(`${item.name || problemNames[item.problem_id] || item.problem_id}脆弱性 +${item.amount}`));
+    if (sizeEffect.environment_prosperity_loss_reduction) details.push(`最適化失敗時の繁栄損失を${sizeEffect.environment_prosperity_loss_reduction}軽減`);
+    if (sizeEffect.next_candidate_bonus) details.push(`次ラウンドの公開 +${sizeEffect.next_candidate_bonus}枚`);
+    parts.push(`${sizeNames[sizeEffect.size] || sizeEffect.size}時の置換値：${details.join("・")}`);
+  });
   return parts.join("／") || "効果なし";
 }
 
@@ -45,6 +59,9 @@ function cardHTML(card) {
   const weak = card.fallback_options.length
     ? `<div class="fallback">${card.fallback_options.map((option, index) => optionHTML(option, index, true)).join("")}</div>`
     : "";
+  const pushed = card.on_pushed_out
+    ? `<div class="fallback">${optionHTML(card.on_pushed_out, 0).replace("起動効果 1", "押し出し時効果")}</div>`
+    : "";
   const source = card.biology_source
     ? `<a class="source" href="${esc(card.biology_source)}" target="_blank" rel="noopener noreferrer">生物学的な出典を開く</a>`
     : "";
@@ -56,7 +73,7 @@ function cardHTML(card) {
     <div class="self-tags"><span class="label">カードのタグ</span><div class="tag-row">${card.tags.map((tag) => tagHTML(tag)).join("") || "なし"}</div></div>
     <div class="required-tags condition"><span class="label">起動条件（自身のタグは数えない）</span>${requirementsHTML(card.requirements)}</div>
     <div class="effect-row">${strong || "<span class='effect'>起動効果なし</span>"}</div>
-    ${weak}${source}
+    ${weak}${pushed}${source}
   </article>`;
 }
 

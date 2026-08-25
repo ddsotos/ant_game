@@ -18,6 +18,7 @@ from ant_game.models import (
     RoundPhase,
     ShieldSpec,
     Size,
+    SizeEffectSpec,
     TraitCard,
 )
 
@@ -583,3 +584,150 @@ def test_finale_environment_is_seeded_into_round_five():
 def test_invalid_environment_deck_is_rejected():
     with pytest.raises(ValueError, match="standard.*finale"):
         EnvironmentCard("bad", "Bad", deck="bonus")
+
+
+def test_environment_loss_reduction_only_reduces_failed_optimization_loss():
+    reducer = TraitCard(
+        "reducer", "Reducer", frozenset({"Morphology"}), CardRole.ACTION, {},
+        (ActionOption(environment_prosperity_loss_reduction=2),),
+    )
+    game = GameEngine(cards() + [reducer], disasters(), seed=11)
+    state = game.new_game()
+    state.prosperity = 20
+    begin(game, state, retain=("reducer",))
+    game.play_card(state, "reducer", 0)
+    game.activate(state, 0)
+    state.current_round.problem_rolls = {"raid": 0, "sanitation": 0}
+    record = game.resolve_environment(state)
+    assert record.problem_penalty == 0
+    assert record.optimization_loss_before_reduction == 13
+    assert record.environment_prosperity_loss_reduction == 2
+    assert record.optimization_half_loss == 11
+    assert state.prosperity == 14
+
+
+def test_vulnerability_increases_only_its_matching_problem_before_shields():
+    vulnerable = TraitCard(
+        "vulnerable", "Vulnerable", frozenset({"Morphology"}), CardRole.ACTION, {},
+        (ActionOption(
+            shields=(ShieldSpec("sanitation", 1),),
+            vulnerabilities=(ShieldSpec("sanitation", 1),),
+        ),),
+    )
+    game = GameEngine(cards() + [vulnerable], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("vulnerable",))
+    game.play_card(state, "vulnerable", 0)
+    game.activate(state, 0)
+    state.current_round.problem_rolls = {"raid": 1, "sanitation": 1}
+    record = game.resolve_environment(state)
+    assert record.vulnerability_by_problem == {"raid": 0, "sanitation": 1}
+    assert record.defense_by_problem["sanitation"] == 1
+    assert record.unblocked_by_problem == {"raid": 1, "sanitation": 1}
+
+
+def test_size_effect_uses_the_size_selected_for_this_round():
+    sized = TraitCard(
+        "sized", "Sized", frozenset({"Morphology"}), CardRole.ACTION, {},
+        (ActionOption(
+            prosperity=5,
+            shields=(ShieldSpec("raid", 2),),
+            vulnerabilities=(ShieldSpec("sanitation", 2),),
+            environment_prosperity_loss_reduction=3,
+            size_effects=(
+                SizeEffectSpec(Size.SMALL, prosperity=1),
+                SizeEffectSpec(
+                    Size.MEDIUM,
+                    prosperity=3,
+                    shields=(ShieldSpec("raid", 1),),
+                    vulnerabilities=(ShieldSpec("sanitation", 1),),
+                    environment_prosperity_loss_reduction=1,
+                ),
+            ),
+        ),),
+    )
+    game = GameEngine(cards() + [sized], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, size=Size.MEDIUM, retain=("sized",))
+    game.play_card(state, "sized", 0)
+    game.activate(state, 0)
+    assert state.current_round.activation_prosperity == 3
+    assert [(item.problem_id, item.amount) for item in state.current_round.shields] == [("raid", 1)]
+    assert [(item.problem_id, item.amount) for item in state.current_round.vulnerabilities] == [("sanitation", 1)]
+    assert state.current_round.environment_prosperity_loss_reduction == 1
+
+
+def test_size_effect_can_add_next_round_candidates():
+    sized = TraitCard(
+        "sized-search", "Sized Search", frozenset({"Sociality"}), CardRole.ACTION, {},
+        (ActionOption(next_candidate_bonus=2, size_effects=(
+            SizeEffectSpec(Size.LARGE, prosperity=2, next_candidate_bonus=1),
+        )),),
+    )
+    game = GameEngine(cards() + [sized], disasters(), seed=11)
+    state = game.new_game()
+    state.size = Size.MEDIUM
+    begin(game, state, size=Size.LARGE, retain=("sized-search",))
+    game.play_card(state, "sized-search", 0)
+    game.activate(state, 0)
+    assert state.current_round.activation_prosperity == 2
+    assert state.pending_candidate_bonus == 1
+
+
+def test_no_optimization_environment_replaces_printed_prosperity():
+    plastic = TraitCard(
+        "plastic", "Plastic", frozenset({"Chemistry"}), CardRole.ACTION, {},
+        (ActionOption(prosperity=3, prosperity_if_environment_has_no_optimizations=5),),
+    )
+    environments = [EnvironmentCard("plain", "Plain")]
+    environments.extend(
+        EnvironmentCard(f"d{i}", f"Environment {i}", (optimization(),)) for i in range(1, 8)
+    )
+    game = GameEngine(cards() + [plastic], environments, seed=11)
+    state = game.new_game()
+    force_first_disaster(game, state, "plain")
+    begin(game, state, retain=("plastic",))
+    game.play_card(state, "plastic", 0)
+    game.activate(state, 0)
+    assert state.current_round.activation_prosperity == 5
+
+
+def test_on_pushed_out_resolves_once_for_the_evicted_physical_card():
+    evicted = TraitCard(
+        "evicted", "Evicted", frozenset({"Morphology"}), CardRole.ACTION, {},
+        (ActionOption(),), on_pushed_out=ActionOption(prosperity=3),
+    )
+    incoming = TraitCard(
+        "incoming", "Incoming", frozenset({"Morphology"}), CardRole.ACTION, {},
+        (ActionOption(),),
+    )
+    game = GameEngine(cards() + [evicted, incoming], disasters(), seed=11, column_capacity=2)
+    state = game.new_game()
+    begin(game, state, retain=("incoming",))
+    state.columns[0].cards = [PlayedCard("evicted", "evicted"), PlayedCard("f0", "f0")]
+    pushed = game.play_card(state, "incoming", 0)
+    assert pushed == ("evicted",)
+    assert state.current_round.card_prosperity == 3
+    assert [item["kind"] for item in state.current_round.action_log].count("pushed_out_effect") == 1
+
+
+def test_candidate_trade_bonus_adds_candidates_without_restoring_keep_slot():
+    teacher = TraitCard(
+        "teacher", "Teacher", frozenset({"Sociality"}), CardRole.ACTION, {},
+        (ActionOption(candidate_bonus_when_reduce_retention_for_more_candidates=1),),
+    )
+    game = GameEngine(cards() + [teacher], disasters(), seed=11)
+    state = game.new_game()
+    begin(game, state, retain=("teacher",))
+    game.play_card(state, "teacher", 0)
+    game.activate(state, 0)
+    state.current_round.problem_rolls = {"raid": 0, "sanitation": 0}
+    game.resolve_environment(state)
+
+    game.start_round(state)
+    game.choose_size(state, Size.SMALL)
+    before_limit = game.retention_limit(state)
+    added = game.expand_retention_candidates(state)
+    assert len(added) == 3
+    assert game.retention_limit(state) == before_limit - 1
+    assert state.pending_candidate_trade_bonus == 0

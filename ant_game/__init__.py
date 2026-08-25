@@ -19,6 +19,7 @@ from .models import (
     RoundRecord,
     ShieldSpec,
     Size,
+    SizeEffectSpec,
     TraitCard,
 )
 
@@ -43,5 +44,6 @@ __all__ = [
     "RoundRecord",
     "ShieldSpec",
     "Size",
+    "SizeEffectSpec",
     "TraitCard",
 ]

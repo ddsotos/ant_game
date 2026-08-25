@@ -260,6 +260,9 @@ class GameEngine:
         # A retention bonus is deliberately a one-shot effect.  Once this
         # round's hand choice is made it cannot leak into later rounds.
         state.pending_retention_bonus = 0
+        # The teaching/search rider is offered for exactly this retention
+        # step.  If the player did not use the trade, it expires here.
+        state.pending_candidate_trade_bonus = 0
         state.phase = RoundPhase.ACTIONS
         return requested
 
@@ -273,13 +276,15 @@ class GameEngine:
         effective_limit = min(self.retention_limit(state), self.hand_limit - len(state.hand))
         if effective_limit < 1:
             raise InvalidDecision("no retention slot is available for candidate expansion")
-        if len(state.trait_deck) + len(state.trait_discard) < 2:
-            raise InvalidDecision("two trait cards are required for candidate expansion")
-        added = self._draw_candidates(state, 2)
+        draw_count = 2 + state.pending_candidate_trade_bonus
+        if len(state.trait_deck) + len(state.trait_discard) < draw_count:
+            raise InvalidDecision(f"{draw_count} trait cards are required for candidate expansion")
+        added = self._draw_candidates(state, draw_count)
         state.current_round.candidate_instances.extend(added)
         state.current_round.candidate_ids += tuple(item.instance_id for item in added)
         state.current_round.candidate_draw_count += len(added)
         state.current_round.retention_trade_used = True
+        state.pending_candidate_trade_bonus = 0
         return tuple(item.instance_id for item in added)
 
     def play_card(self, state: GameState, card_id: str, column_index: int) -> tuple[str, ...]:
@@ -298,8 +303,7 @@ class GameEngine:
         if len(column.cards) > self.column_capacity:
             pushed_card = column.cards.pop(0)
             pushed.append(pushed_card.instance_id)
-            state.trait_discard.append(CardInstance(pushed_card.instance_id, pushed_card.card_id))
-            state.trait_discard.extend(pushed_card.stored_cards)
+            self._resolve_pushed_out(state, pushed_card)
         self._on_play(card, state)
         self._log_action(
             state,
@@ -327,8 +331,7 @@ class GameEngine:
         pushed = None
         if len(column.cards) > self.column_capacity:
             pushed = column.cards.pop(0)
-            state.trait_discard.append(CardInstance(pushed.instance_id, pushed.card_id))
-            state.trait_discard.extend(pushed.stored_cards)
+            self._resolve_pushed_out(state, pushed)
         self._log_action(
             state,
             {
@@ -400,7 +403,15 @@ class GameEngine:
                 "shields": tuple(option.shields),
                 "retention_bonus": option.retention_bonus,
                 "next_candidate_bonus": option.next_candidate_bonus,
+                "candidate_trade_bonus": (
+                    option.candidate_bonus_when_reduce_retention_for_more_candidates
+                ),
                 "tag_prosperity": tuple(option.tag_prosperity),
+                "environment_prosperity_loss_reduction": (
+                    option.environment_prosperity_loss_reduction
+                ),
+                "vulnerabilities": tuple(option.vulnerabilities),
+                "size_effects": tuple(option.size_effects),
                 "target_card_id": target_card_id,
                 "recover_lower_card": option.recover_lower_card,
             },
@@ -417,11 +428,16 @@ class GameEngine:
         defense_by_problem: dict[str, int] = {}
         unblocked_by_problem: dict[str, int] = {}
         penalty_by_problem: dict[str, int] = {}
+        vulnerability_by_problem: dict[str, int] = {}
         for problem in PROBLEM_IDS:
             defense = sum(shield.amount for shield in context.shields if shield.problem_id == problem)
-            unblocked = max(0, context.problem_rolls[problem] - defense)
+            vulnerability = sum(
+                item.amount for item in context.vulnerabilities if item.problem_id == problem
+            )
+            unblocked = max(0, context.problem_rolls[problem] + vulnerability - defense)
             penalty = 0 if unblocked == 0 else 2 ** unblocked
             defense_by_problem[problem] = defense
+            vulnerability_by_problem[problem] = vulnerability
             unblocked_by_problem[problem] = unblocked
             penalty_by_problem[problem] = penalty
         problem_penalty = sum(penalty_by_problem.values())
@@ -455,10 +471,17 @@ class GameEngine:
         # card, not an automatic score-halving trap.
         optimization_met = not optimization_results or any(optimization_results)
         optimization_half_loss = 0
+        optimization_loss_before_reduction = 0
+        applied_environment_reduction = 0
         if not optimization_met:
             score_before_half = state.prosperity
-            state.prosperity //= 2
-            optimization_half_loss = score_before_half - state.prosperity
+            optimization_loss_before_reduction = score_before_half - (score_before_half // 2)
+            applied_environment_reduction = min(
+                optimization_loss_before_reduction,
+                context.environment_prosperity_loss_reduction,
+            )
+            optimization_half_loss = optimization_loss_before_reduction - applied_environment_reduction
+            state.prosperity = score_before_half - optimization_half_loss
 
         state.round_number += 1
         state.phase = RoundPhase.COMPLETE if state.round_number >= self.rounds else RoundPhase.IDLE
@@ -489,6 +512,7 @@ class GameEngine:
             problem_roll_sources=dict(context.problem_roll_sources),
             problem_roll_combines=dict(context.problem_roll_combines),
             defense_by_problem=defense_by_problem,
+            vulnerability_by_problem=vulnerability_by_problem,
             unblocked_by_problem=unblocked_by_problem,
             penalty_by_problem=penalty_by_problem,
             problem_penalty=problem_penalty,
@@ -509,6 +533,8 @@ class GameEngine:
             optimization_results=optimization_results,
             optimization_actual_tags=dict(actual_tags),
             optimization_half_loss=optimization_half_loss,
+            optimization_loss_before_reduction=optimization_loss_before_reduction,
+            environment_prosperity_loss_reduction=applied_environment_reduction,
             total_prosperity=state.prosperity,
             hand_after=tuple(item.instance_id for item in state.hand),
             columns_after=columns_after,
@@ -656,6 +682,23 @@ class GameEngine:
         assert state.current_round is not None
         self._apply_option(card.options[0], state, source="card")
 
+    def _resolve_pushed_out(self, state: GameState, pushed: PlayedCard) -> None:
+        """Discard one evicted card and resolve its rare lifecycle rider once."""
+
+        card = self.traits[pushed.card_id]
+        if card.on_pushed_out is not None:
+            prosperity = self._apply_option(card.on_pushed_out, state, source="card")
+            self._log_action(
+                state,
+                {
+                    "kind": "pushed_out_effect",
+                    "card_id": pushed.instance_id,
+                    "prosperity": prosperity,
+                },
+            )
+        state.trait_discard.append(CardInstance(pushed.instance_id, pushed.card_id))
+        state.trait_discard.extend(pushed.stored_cards)
+
     def _add_prosperity(self, state: GameState, amount: int, *, source: str) -> None:
         assert state.current_round is not None
         if amount <= 0:
@@ -688,13 +731,44 @@ class GameEngine:
         tag_bonus = tag_total // option.tag_prosperity_divisor
         if option.tag_prosperity_cap is not None:
             tag_bonus = min(tag_bonus, option.tag_prosperity_cap)
-        self._add_prosperity(state, option.prosperity, source=source)
+        size_effect = next((item for item in option.size_effects if item.size is state.size), None)
+        environment = self.current_disaster(state)
+        printed_prosperity = option.prosperity
+        if (
+            not environment.optimizations
+            and option.prosperity_if_environment_has_no_optimizations is not None
+        ):
+            printed_prosperity = option.prosperity_if_environment_has_no_optimizations
+        resolved_prosperity = size_effect.prosperity if size_effect is not None else printed_prosperity
+        resolved_shields = size_effect.shields if size_effect is not None else option.shields
+        resolved_vulnerabilities = (
+            size_effect.vulnerabilities if size_effect is not None else option.vulnerabilities
+        )
+        resolved_environment_reduction = (
+            size_effect.environment_prosperity_loss_reduction
+            if size_effect is not None
+            else option.environment_prosperity_loss_reduction
+        )
+        resolved_candidate_bonus = (
+            size_effect.next_candidate_bonus if size_effect is not None else option.next_candidate_bonus
+        )
+        self._add_prosperity(state, resolved_prosperity, source=source)
         self._add_prosperity(state, tag_bonus, source="tag")
-        prosperity = option.prosperity + tag_bonus
-        state.current_round.shields.extend(option.shields)
+        prosperity = resolved_prosperity + tag_bonus
+        state.current_round.shields.extend(resolved_shields)
+        state.current_round.vulnerabilities.extend(resolved_vulnerabilities)
+        state.current_round.environment_prosperity_loss_reduction += resolved_environment_reduction
         state.current_round.bonus_draws += option.draw_cards
         state.pending_retention_bonus = min(2, state.pending_retention_bonus + option.retention_bonus)
-        state.pending_candidate_bonus = min(2, state.pending_candidate_bonus + option.next_candidate_bonus)
+        state.pending_candidate_bonus = min(
+            2,
+            state.pending_candidate_bonus + resolved_candidate_bonus,
+        )
+        state.pending_candidate_trade_bonus = min(
+            2,
+            state.pending_candidate_trade_bonus
+            + option.candidate_bonus_when_reduce_retention_for_more_candidates,
+        )
         if option.draw_cards:
             self._draw_to_hand(state, option.draw_cards)
         return prosperity

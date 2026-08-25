@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from types import MappingProxyType
 
 from .models import (
@@ -20,6 +19,7 @@ from .models import (
     ShieldSpec,
     TraitCard,
 )
+from .trait_data import load_trait_cards
 
 
 ROOT_TAGS = frozenset({"Morphology", "Chemistry", "Sociality", "Nesting", "Resource Ecology"})
@@ -78,7 +78,7 @@ STARTERS: tuple[TraitCard, ...] = (
 )
 
 
-# Sixty normal cards. All are ACTION cards; strong options are gated by
+# Sixty-four normal cards. All are ACTION cards; strong options are gated by
 # accumulated roots rather than by new currencies or bespoke effect ids.
 _NORMAL_TRAITS_RAW: tuple[TraitCard, ...] = (
     _action("oecophylla_silkworks", "Oecophylla Silkworks", frozenset({"Nesting", "Sociality"}), {}, (ActionOption(prosperity=2, text="Weave a protected canopy."),), "Oecophylla smaragdina", "Workers pull leaves together with silk produced by their larvae.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4896424/", "Foundation", "Larval silk turns sociality into a living canopy nest."),
@@ -141,6 +141,10 @@ _NORMAL_TRAITS_RAW: tuple[TraitCard, ...] = (
     _action("temnothorax_worker_size", "Temnothorax Worker Size", frozenset({"Morphology"}), {"Chemistry": 2, "Sociality": 2}, (ActionOption(prosperity=5, retention_bonus=1, text="Deploy size-diverse workers for different tasks."),), "Temnothorax longispinosus", "Temnothorax colonies contain workers of variable size whose morphology is associated with task performance.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4079623/", "Payoff", "Worker-size variation preserves a broader task repertoire.", (ActionOption(prosperity=1, text="Use one worker size for a simple task."),)),
     _action("pogonomyrmex_seed_sorting", "Pogonomyrmex Seed Sorting", frozenset({"Resource Ecology"}), {"Morphology": 2, "Chemistry": 2}, (ActionOption(prosperity=5, retention_bonus=1, text="Sort seeds by size and processability."),), "Pogonomyrmex badius", "Pogonomyrmex workers sort and process collected seeds, including germinated seeds and hard seed types.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5125654/", "Payoff", "Sorting behavior keeps different seed types usable across changing conditions.", (ActionOption(prosperity=1, text="Sort a small seed batch."),)),
     _action("camponotus_amputation", "Camponotus Amputation", frozenset({"Sociality"}), {"Morphology": 2, "Chemistry": 2}, (ActionOption(prosperity=5, shields=(_shield("sanitation", amount=3),), text="Remove a damaged limb before infection spreads."),), "Camponotus floridanus", "Camponotus floridanus workers treat severe injuries with wound care and, in some cases, limb amputation.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10756881/", "Payoff", "A coordinated surgical response can prevent a local injury from becoming fatal.", (ActionOption(prosperity=1, shields=(_shield("sanitation", amount=1),), text="Clean a damaged limb."),)),
+    _action("melissotarsus_living_wood_galleries", "Melissotarsus Living Wood Galleries", frozenset({"Resource Ecology"}), {"Nesting": 2, "Morphology": 2}, (ActionOption(prosperity=5, environment_prosperity_loss_reduction=2, text="Shelter inside galleries cut through living wood."),), "Melissotarsus spp.", "Workers excavate extensive gallery systems beneath the bark of living trees.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6092875/", "Payoff", "Living wood galleries buffer the colony from an otherwise hostile environment.", (ActionOption(prosperity=1, text="Extend a shallow gallery."),)),
+    _action("allomerus_fungal_trap_gallery", "Allomerus Fungal Trap Gallery", frozenset({"Morphology"}), {"Nesting": 3, "Sociality": 2}, (ActionOption(prosperity=5, shields=(_shield("raid", amount=2),), text="Ambush prey through a fungus-reinforced gallery."),), "Allomerus decemarticulatus", "Workers build fungus-reinforced galleries with openings used to trap arthropod prey.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3597600/", "Payoff", "A coordinated gallery turns nest construction into a defensive hunting trap.", (ActionOption(prosperity=1, shields=(_shield("raid", amount=1),), text="Ambush through one gallery opening."),)),
+    _action("formica_thatch_thermostat", "Formica Thatch Thermostat", frozenset({"Morphology"}), {"Nesting": 3}, (ActionOption(prosperity=5, environment_prosperity_loss_reduction=2, text="Regulate heat with a thatched mound."),), "Formica polyctena", "The thatch layer limits daytime overheating and slows heat loss from the mound at night.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3016983/", "Payoff", "A mature thatched nest buffers environmental temperature swings.", (ActionOption(prosperity=1, text="Adjust a small patch of thatch."),)),
+    _action("atta_large_colony_worker_polymorphism", "Atta Large Colony Worker Polymorphism", frozenset({"Morphology"}), {}, (ActionOption(prosperity=4, vulnerabilities=(_shield("sanitation", amount=1),), text="Coordinate specialized worker sizes across a large colony."),), "Atta spp.", "Large attine colonies support more complex division of labour and differentiated worker roles.", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4173680/", "Foundation", "Worker polymorphism creates strong scale economies while dense organization raises sanitation risk.", root_tag_counts={"Morphology": 2}),
 )
 
 
@@ -235,6 +239,25 @@ _NEW_TRAIT_SOURCES: dict[str, tuple[str, str]] = {
 }
 
 _OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
+    "pheidole_supermajor_program": (
+        ActionOption(prosperity=3, shields=(_shield("raid", amount=2),), text="Deploy an oversized defender."),
+    ),
+    "megaponera_field_medicine": (
+        ActionOption(prosperity=3, shields=(_shield("sanitation", amount=2),), text="Treat an infected wound."),
+    ),
+    "colobopsis_last_defense": (
+        ActionOption(prosperity=3, shields=(_shield("raid", amount=2),), text="Rupture a gland to stop an intruder."),
+    ),
+    "acromyrmex_antibiotic_garden": (
+        ActionOption(prosperity=3, shields=(_shield("sanitation", amount=2),), text="Protect the cultivated crop."),
+    ),
+    "paraponera_poneratoxin": (
+        ActionOption(prosperity=3, text="Make a rival pay for approaching."),
+        ActionOption(prosperity=3, shields=(_shield("raid", amount=3),), text="Deter an attack with venom."),
+    ),
+    "pheidole_bite_muscle": (
+        ActionOption(prosperity=3, shields=(_shield("raid", amount=3),), text="Drive a powerful defensive bite."),
+    ),
     "myrmecocystus_reserve": (
         ActionOption(prosperity=3, store_hand_card=True, storage_income_per_card=2, text="Hide one hand card in a living reserve."),
         ActionOption(prosperity=3, text="Keep the reserve mobile instead of storing a card."),
@@ -283,16 +306,10 @@ _OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
     ),
 }
 
+_V016_TRAITS = load_trait_cards()
+STARTERS = tuple(card for card in _V016_TRAITS if card.role is CardRole.STARTER)
 NORMAL_TRAITS: tuple[TraitCard, ...] = tuple(
-    replace(
-        card,
-        root_tags=frozenset({_PAYOFF_ROOT[card.id]}) if card.id in _PAYOFF_ROOT else card.root_tags,
-        activation_requirements=_PAYOFF_REQUIREMENTS.get(card.id, card.activation_requirements),
-        options=_OPTION_OVERRIDES.get(card.id, card.options),
-        source_taxon=_NEW_TRAIT_SOURCES.get(card.id, (card.source_taxon, card.biology_source))[0],
-        biology_source=_NEW_TRAIT_SOURCES.get(card.id, (card.source_taxon, card.biology_source))[1],
-    )
-    for card in _NORMAL_TRAITS_RAW
+    card for card in _V016_TRAITS if card.role is CardRole.ACTION
 )
 
 

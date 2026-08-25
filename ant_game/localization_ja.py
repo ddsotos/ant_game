@@ -117,6 +117,10 @@ CARD_NAMES = {
     "temnothorax_worker_size": "ムネボソアリの体格分業",
     "pogonomyrmex_seed_sorting": "収穫アリの種子選別",
     "camponotus_amputation": "オオアリの断脚治療",
+    "melissotarsus_living_wood_galleries": "メリソタルスの生木坑道",
+    "allomerus_fungal_trap_gallery": "アロメルスの菌糸トラップ回廊",
+    "formica_thatch_thermostat": "ヤマアリの茅葺き温室巣",
+    "atta_large_colony_worker_polymorphism": "ハキリアリの巨大コロニー分業",
 }
 
 CARD_TEXTS = {
@@ -183,7 +187,20 @@ CARD_TEXTS = {
     "temnothorax_worker_size": "体格の異なる働きアリが、採餌や育児など異なる仕事を分担する。",
     "pogonomyrmex_seed_sorting": "集めた種子を大きさや硬さで選り分け、発芽した種子も加工する。",
     "camponotus_amputation": "重い傷を負った脚を仲間が処置し、感染が広がる前に切断することがある。",
+    "melissotarsus_living_wood_galleries": "生きた樹木の樹皮下へ坑道を掘り、外界から隔てられた生活空間を作る。",
+    "allomerus_fungal_trap_gallery": "菌糸で補強した回廊の穴から獲物を待ち伏せし、集団で拘束する。",
+    "formica_thatch_thermostat": "巣を覆う茅が昼の過熱と夜の放熱を抑え、内部温度を安定させる。",
+    "atta_large_colony_worker_polymorphism": "体格の異なる働きアリが、大規模な巣で採餌・加工・育児を分担する。",
 }
+
+# The versioned JSON is authoritative for v0.16. Keep the older explicit
+# translations above as readable history, then fill and refresh every current
+# card from the canonical snapshot.
+from .trait_data import load_trait_cards
+
+_CURRENT_TRAITS = load_trait_cards()
+CARD_NAMES.update({card.id: card.name for card in _CURRENT_TRAITS})
+CARD_TEXTS.update({card.id: card.text for card in _CURRENT_TRAITS})
 
 
 def card_name(card_id: str, fallback: str = "") -> str:
@@ -218,12 +235,35 @@ def option_text(option: ActionOption) -> str:
     if option.prosperity:
         parts.append(f"繁栄 +{option.prosperity}")
     parts.extend(shield_text(shield) for shield in option.shields)
+    for vulnerability in option.vulnerabilities:
+        problem = PROBLEM_NAMES.get(vulnerability.problem_id, vulnerability.problem_id)
+        parts.append(f"{problem}脆弱性 +{vulnerability.amount}")
     if option.draw_cards:
         parts.append(f"カードを今すぐ{option.draw_cards}枚引く")
     if option.retention_bonus:
         parts.append(f"次ラウンドの保持上限 +{option.retention_bonus}")
     if option.next_candidate_bonus:
         parts.append(f"次ラウンドの公開候補 +{option.next_candidate_bonus}枚")
+    if option.candidate_bonus_when_reduce_retention_for_more_candidates:
+        parts.append(
+            "次ラウンドに保持上限を減らして候補を増やす時、公開候補 +"
+            f"{option.candidate_bonus_when_reduce_retention_for_more_candidates}枚"
+        )
+    if option.environment_prosperity_loss_reduction:
+        parts.append(f"環境による繁栄損失を{option.environment_prosperity_loss_reduction}軽減")
+    for effect in option.size_effects:
+        details: list[str] = []
+        if effect.prosperity:
+            details.append(f"繁栄 +{effect.prosperity}")
+        details.extend(shield_text(shield) for shield in effect.shields)
+        if effect.environment_prosperity_loss_reduction:
+            details.append(f"環境による繁栄損失を{effect.environment_prosperity_loss_reduction}軽減")
+        for vulnerability in effect.vulnerabilities:
+            problem = PROBLEM_NAMES.get(vulnerability.problem_id, vulnerability.problem_id)
+            details.append(f"{problem}脆弱性 +{vulnerability.amount}")
+        if effect.next_candidate_bonus:
+            details.append(f"次ラウンドの公開候補 +{effect.next_candidate_bonus}枚")
+        parts.append(f"{SIZE_NAMES.get(effect.size.name, effect.size.name)}なら" + "・".join(details))
     if option.recover_lower_card:
         parts.append("同じ列の下段カード1枚を手札へ戻す")
     for tag, coefficient in option.tag_prosperity:
@@ -235,4 +275,9 @@ def option_text(option: ActionOption) -> str:
     if getattr(option, "store_hand_card", False):
         income = getattr(option, "storage_income_per_card", 0)
         parts.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド繁栄 +{income}）")
+    if option.prosperity_if_environment_has_no_optimizations is not None:
+        parts.append(
+            "最適化のない環境なら繁栄 +"
+            f"{option.prosperity_if_environment_has_no_optimizations}（通常値と置換）"
+        )
     return "／".join(parts) or "数値効果なし"

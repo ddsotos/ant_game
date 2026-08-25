@@ -192,11 +192,13 @@ class WebGameService:
             "can_expand_candidates": bool(
                 context and state.phase is RoundPhase.RETAIN and not context.retention_trade_used
                 and min(engine.retention_limit(state), engine.hand_limit - len(state.hand)) >= 1
-                and len(state.trait_deck) + len(state.trait_discard) >= 2
+                and len(state.trait_deck) + len(state.trait_discard)
+                >= 2 + state.pending_candidate_trade_bonus
             ),
             "hand_limit": engine.hand_limit,
             "pending_retention_bonus": state.pending_retention_bonus,
             "pending_candidate_bonus": state.pending_candidate_bonus,
+            "pending_candidate_trade_bonus": state.pending_candidate_trade_bonus,
             "candidate_draw_count": context.candidate_draw_count if context else 0,
             "round_prosperity_base": round_base,
             "round_prosperity_multiplier": round_multiplier,
@@ -246,7 +248,10 @@ class WebGameService:
         total = 0
         for problem in PROBLEM_IDS:
             roll = context.problem_rolls.get(problem, 0)
-            unblocked = max(0, roll - shields.get(problem, 0))
+            vulnerability = sum(
+                item.amount for item in context.vulnerabilities if item.problem_id == problem
+            )
+            unblocked = max(0, roll + vulnerability - shields.get(problem, 0))
             total += 0 if unblocked == 0 else 2 ** unblocked
         return total
 
@@ -301,8 +306,12 @@ class WebGameService:
         raw = tuple(context.problem_raw_rolls.get(problem, ()))
         selected = context.problem_selected_rolls.get(problem)
         modifier = context.problem_modifiers.get(problem, 0)
-        unblocked = max(0, roll - shield) if roll is not None else None
-        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(raw), "selected_roll": selected, "modifier": modifier, "roll_source": context.problem_roll_sources.get(problem, "dice"), "combine": context.problem_roll_combines.get(problem, "highest"), "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
+        vulnerability = sum(
+            item.amount for item in context.vulnerabilities if item.problem_id == problem
+        )
+        effective_roll = roll + vulnerability if roll is not None else None
+        unblocked = max(0, effective_roll - shield) if effective_roll is not None else None
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": effective_roll, "vulnerability": vulnerability, "raw_rolls": list(raw), "selected_roll": selected, "modifier": modifier, "roll_source": context.problem_roll_sources.get(problem, "dice"), "combine": context.problem_roll_combines.get(problem, "highest"), "shield": shield, "unblocked": unblocked, "penalty": None if unblocked is None else (0 if unblocked == 0 else 2 ** unblocked)}
 
     @staticmethod
     def _tag_data(tag: str, count: int | None = None) -> dict[str, Any]:
@@ -347,7 +356,7 @@ class WebGameService:
 
     def _card_data(self, card: TraitCard, instance_id: str) -> dict[str, Any]:
         role = "初期形質" if card.role is CardRole.STARTER else ROLE_NAMES.get(card.design_role, card.design_role)
-        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "subject_taxon": card.source_taxon, "biology_basis": card.biology_basis, "biology_source": card.biology_source, "tags": [self._tag_data(tag, card.counted_root_tags[tag]) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": role, "options": [self._option_data(option) for option in card.options], "fallback_options": [self._option_data(option) for option in card.fallback_options]}
+        return {"id": instance_id, "card_id": card.id, "name": card_name(card.id, card.name), "text": CARD_TEXTS.get(card.id, card.text), "subject_taxon": card.source_taxon, "biology_basis": card.biology_basis, "biology_source": card.biology_source, "tags": [self._tag_data(tag, card.counted_root_tags[tag]) for tag in sorted(card.root_tags) if tag in TAG_INFO], "requirements": self._requirements_data(card.activation_requirements), "role": role, "options": [self._option_data(option) for option in card.options], "fallback_options": [self._option_data(option) for option in card.fallback_options], "on_pushed_out": self._option_data(card.on_pushed_out) if card.on_pushed_out else None}
 
     @staticmethod
     def _option_data(option: ActionOption) -> dict[str, Any]:
@@ -364,6 +373,11 @@ class WebGameService:
             "tag_prosperity_divisor": option.tag_prosperity_divisor,
             "tag_prosperity": [{"tag": tag, "name": TAG_NAMES.get(tag, tag), "coefficient": coefficient} for tag, coefficient in option.tag_prosperity],
             "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in option.shields],
+            "vulnerabilities": [{"problem_id": item.problem_id, "name": PROBLEM_NAMES.get(item.problem_id, item.problem_id), "amount": item.amount} for item in option.vulnerabilities],
+            "environment_prosperity_loss_reduction": option.environment_prosperity_loss_reduction,
+            "candidate_bonus_when_reduce_retention_for_more_candidates": option.candidate_bonus_when_reduce_retention_for_more_candidates,
+            "prosperity_if_environment_has_no_optimizations": option.prosperity_if_environment_has_no_optimizations,
+            "size_effects": [{"size": item.size.name.lower(), "prosperity": item.prosperity, "next_candidate_bonus": item.next_candidate_bonus, "environment_prosperity_loss_reduction": item.environment_prosperity_loss_reduction, "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in item.shields], "vulnerabilities": [{"problem_id": vulnerability.problem_id, "name": PROBLEM_NAMES.get(vulnerability.problem_id, vulnerability.problem_id), "amount": vulnerability.amount} for vulnerability in item.vulnerabilities]} for item in option.size_effects],
         }
 
     @classmethod
@@ -371,12 +385,13 @@ class WebGameService:
         environment = engine.disasters[record.disaster_id]
         labels = cls._optimization_labels(environment)
         gain_breakdown = {"base": record.base_prosperity, "activation": record.activation_prosperity, "card": record.card_prosperity, "storage": record.storage_prosperity, "tag": record.tag_prosperity, "pool_before_problems": record.prosperity_pool_before_problems, "problem_penalty": record.problem_penalty, "pool_after_problems": record.prosperity_pool_after_problems, "multiplier": record.size.prosperity_multiplier, "delta": record.prosperity_delta}
-        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [cls._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "gain_breakdown": gain_breakdown, "optimizations": [{"name": labels[index] if index < len(labels) else f"最適化{index + 1}", "requirements": cls._requirements_data_static(req), "met": record.optimization_results[index]} for index, req in enumerate(record.optimization_requirements)], "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "total_prosperity": record.total_prosperity}
+        return {"round": record.round_number, "environment_name": event_name(environment.id, environment.name), "score_before": record.score_before, "prosperity_base": record.prosperity_base, "size_multiplier": record.size.prosperity_multiplier, "prosperity_delta": record.prosperity_delta, "score_after_prosperity": record.score_after_prosperity, "problems": [cls._problem_result(record, problem) for problem in PROBLEM_IDS], "problem_penalty": record.problem_penalty, "score_after_problems": record.score_after_problems, "gain_breakdown": gain_breakdown, "optimizations": [{"name": labels[index] if index < len(labels) else f"最適化{index + 1}", "requirements": cls._requirements_data_static(req), "met": record.optimization_results[index]} for index, req in enumerate(record.optimization_requirements)], "optimization_met": record.optimization_met, "optimization_half_loss": record.optimization_half_loss, "optimization_loss_before_reduction": record.optimization_loss_before_reduction, "environment_prosperity_loss_reduction": record.environment_prosperity_loss_reduction, "total_prosperity": record.total_prosperity}
 
     @classmethod
     def _problem_result(cls, record: Any, problem: str) -> dict[str, Any]:
         roll = record.problem_rolls[problem]; unblocked = record.unblocked_by_problem[problem]
-        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll, "raw_rolls": list(record.problem_raw_rolls.get(problem, ())), "selected_roll": record.problem_selected_rolls.get(problem), "modifier": record.problem_modifiers.get(problem, 0), "roll_source": record.problem_roll_sources.get(problem, "dice"), "combine": record.problem_roll_combines.get(problem, "highest"), "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
+        vulnerability = record.vulnerability_by_problem[problem]
+        return {"id": problem, "name": PROBLEM_NAMES.get(problem, problem), "roll": roll, "effective_roll": roll + vulnerability, "vulnerability": vulnerability, "raw_rolls": list(record.problem_raw_rolls.get(problem, ())), "selected_roll": record.problem_selected_rolls.get(problem), "modifier": record.problem_modifiers.get(problem, 0), "roll_source": record.problem_roll_sources.get(problem, "dice"), "combine": record.problem_roll_combines.get(problem, "highest"), "defense": record.defense_by_problem[problem], "unblocked": unblocked, "penalty": record.penalty_by_problem[problem]}
 
 
 SERVICE = WebGameService()

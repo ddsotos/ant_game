@@ -54,6 +54,28 @@ class ShieldSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class SizeEffectSpec:
+    """Additional option effects that apply at one selected colony size."""
+
+    size: Size
+    prosperity: int = 0
+    shields: tuple[ShieldSpec, ...] = ()
+    environment_prosperity_loss_reduction: int = 0
+    vulnerabilities: tuple[ShieldSpec, ...] = ()
+    next_candidate_bonus: int = 0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.size, Size):
+            raise TypeError("a size effect must name a Size")
+        if (
+            self.prosperity < 0
+            or self.environment_prosperity_loss_reduction < 0
+            or self.next_candidate_bonus < 0
+        ):
+            raise ValueError("size effect amounts must not be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class ActionOption:
     """One selectable result of an ACTION card."""
 
@@ -76,6 +98,21 @@ class ActionOption:
     # A divisor gives content authors a simple way to keep an uncapped,
     # board-wide payoff readable without imposing an arbitrary ceiling.
     tag_prosperity_divisor: int = 1
+    # Reduces only the score loss from failing every optimization printed on
+    # the forecast environment.  Raid/sanitation penalties remain governed by
+    # their typed shields.
+    environment_prosperity_loss_reduction: int = 0
+    # A vulnerability increases the matching recurring problem's effective
+    # roll for this round.  Reusing ShieldSpec keeps the problem vocabulary
+    # typed without introducing card-specific effect ids.
+    vulnerabilities: tuple[ShieldSpec, ...] = ()
+    size_effects: tuple[SizeEffectSpec, ...] = ()
+    # If the next retention step uses the normal keep-1/reveal-2 trade, reveal
+    # this many additional candidates.  It never increases retention itself.
+    candidate_bonus_when_reduce_retention_for_more_candidates: int = 0
+    # Replaces the printed prosperity when the current environment has no
+    # optimization routes. This models plasticity without card-id branches.
+    prosperity_if_environment_has_no_optimizations: int | None = None
     text: str = ""
 
     def __post_init__(self) -> None:
@@ -87,12 +124,23 @@ class ActionOption:
             raise ValueError("tag prosperity divisor must be positive")
         if self.storage_income_per_card < 0:
             raise ValueError("storage income must not be negative")
+        if self.environment_prosperity_loss_reduction < 0:
+            raise ValueError("environment prosperity loss reduction must not be negative")
+        if self.candidate_bonus_when_reduce_retention_for_more_candidates < 0:
+            raise ValueError("candidate trade bonus must not be negative")
+        if (
+            self.prosperity_if_environment_has_no_optimizations is not None
+            and self.prosperity_if_environment_has_no_optimizations < 0
+        ):
+            raise ValueError("conditional prosperity must not be negative")
         if self.store_hand_card and self.storage_income_per_card <= 0:
             raise ValueError("a storage effect must have positive income")
         if self.store_hand_card and self.recover_lower_card:
             raise ValueError("an option cannot both store and recover a card")
         if any(not tag or coefficient < 0 for tag, coefficient in self.tag_prosperity):
             raise ValueError("tag prosperity entries must use non-negative coefficients")
+        if len({effect.size for effect in self.size_effects}) != len(self.size_effects):
+            raise ValueError("an option may define at most one effect per size")
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,12 +164,19 @@ class TraitCard:
     # specialized foundations may print two copies of a tag; keeping the
     # multiplicity separate preserves the set-based compatibility API.
     root_tag_counts: Mapping[str, int] = field(default_factory=dict)
+    # Rare lifecycle effect resolved exactly once when this physical card is
+    # evicted from the bottom of a full column.
+    on_pushed_out: ActionOption | None = None
 
     def __post_init__(self) -> None:
         if any(tag not in self.root_tags for tag in self.root_tag_counts):
             raise ValueError("root tag counts may only name printed root tags")
         if any(amount < 1 for amount in self.root_tag_counts.values()):
             raise ValueError("root tag counts must be positive")
+        if self.on_pushed_out is not None and (
+            self.on_pushed_out.store_hand_card or self.on_pushed_out.recover_lower_card
+        ):
+            raise ValueError("a pushed-out effect cannot require a target card")
 
     @property
     def tags(self) -> frozenset[str]:
@@ -267,6 +322,8 @@ class RoundContext:
     prosperity_pool_after_problems: int = 0
     prosperity_delta: int = 0
     shields: list[ShieldSpec] = field(default_factory=list)
+    vulnerabilities: list[ShieldSpec] = field(default_factory=list)
+    environment_prosperity_loss_reduction: int = 0
     bonus_draws: int = 0
 
 
@@ -305,6 +362,7 @@ class RoundRecord:
     problem_roll_sources: Mapping[str, str]
     problem_roll_combines: Mapping[str, str]
     defense_by_problem: Mapping[str, int]
+    vulnerability_by_problem: Mapping[str, int]
     unblocked_by_problem: Mapping[str, int]
     penalty_by_problem: Mapping[str, int]
     problem_penalty: int
@@ -325,6 +383,8 @@ class RoundRecord:
     optimization_results: tuple[bool, ...]
     optimization_actual_tags: Mapping[str, int]
     optimization_half_loss: int
+    optimization_loss_before_reduction: int
+    environment_prosperity_loss_reduction: int
     total_prosperity: int
     hand_after: tuple[str, ...]
     columns_after: tuple[tuple[str, ...], ...]
@@ -341,6 +401,7 @@ class GameState:
     pending_retention_bonus: int = 0
     # Added to the next round's six-card reveal, then consumed at choose_size.
     pending_candidate_bonus: int = 0
+    pending_candidate_trade_bonus: int = 0
     hand: list[CardInstance] = field(default_factory=list)
     columns: list[ColumnState] = field(default_factory=list)
     disaster_ids: tuple[str, ...] = ()
