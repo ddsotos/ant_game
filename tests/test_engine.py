@@ -643,6 +643,41 @@ def test_size_effect_uses_the_size_selected_for_this_round():
     assert [(item.problem_id, item.amount) for item in state.current_round.shields] == [("raid", 1)]
 
 
+def test_size_effect_can_add_next_round_candidates():
+    sized = TraitCard(
+        "sized-search", "Sized Search", frozenset({"Sociality"}), CardRole.ACTION, {},
+        (ActionOption(size_effects=(
+            SizeEffectSpec(Size.LARGE, prosperity=2, next_candidate_bonus=1),
+        )),),
+    )
+    game = GameEngine(cards() + [sized], disasters(), seed=11)
+    state = game.new_game()
+    state.size = Size.MEDIUM
+    begin(game, state, size=Size.LARGE, retain=("sized-search",))
+    game.play_card(state, "sized-search", 0)
+    game.activate(state, 0)
+    assert state.current_round.activation_prosperity == 2
+    assert state.pending_candidate_bonus == 1
+
+
+def test_no_optimization_environment_replaces_printed_prosperity():
+    plastic = TraitCard(
+        "plastic", "Plastic", frozenset({"Chemistry"}), CardRole.ACTION, {},
+        (ActionOption(prosperity=3, prosperity_if_environment_has_no_optimizations=5),),
+    )
+    environments = [EnvironmentCard("plain", "Plain")]
+    environments.extend(
+        EnvironmentCard(f"d{i}", f"Environment {i}", (optimization(),)) for i in range(1, 8)
+    )
+    game = GameEngine(cards() + [plastic], environments, seed=11)
+    state = game.new_game()
+    force_first_disaster(game, state, "plain")
+    begin(game, state, retain=("plastic",))
+    game.play_card(state, "plastic", 0)
+    game.activate(state, 0)
+    assert state.current_round.activation_prosperity == 5
+
+
 def test_on_pushed_out_resolves_once_for_the_evicted_physical_card():
     evicted = TraitCard(
         "evicted", "Evicted", frozenset({"Morphology"}), CardRole.ACTION, {},

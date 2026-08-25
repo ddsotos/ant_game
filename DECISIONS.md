@@ -523,3 +523,19 @@ Why:
 新しい管理資源やカード固有処理を増やさず、既存の問題・最適化・サイズ・押し出し・保持交換の判断へ効果を接続できるため。
 
 This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.
+
+## D-027 — v0.16完全版JSONをカード定義の正本にする
+
+Date: 2026-08-25
+
+Accepted by direct user request:
+
+- チェックサム `7d63c54845081860df9493992938407720230059b6641c3f4653baa8428f82d4` の完全版JSONを読み込み、初期形質3枚と通常カード105枚を実装へ反映する。
+- 最適化のない環境での繁栄置換と、サイズ依存の候補追加を汎用効果として追加する。
+- カード一覧APIと日本語表示は、完全版JSONの名称・生態説明・効果を公開する。
+
+Why:
+
+不完全な復元データやカードID別の例外処理を避け、デザイン資料と実行時カードを同じ版管理データから再現するため。
+
+This is an unplayed human-play baseline. No NPC simulation or balance playtest was run; it does not count toward `promising`.

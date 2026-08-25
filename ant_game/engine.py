@@ -733,9 +733,16 @@ class GameEngine:
             tag_bonus = min(tag_bonus, option.tag_prosperity_cap)
         size_effect = next((item for item in option.size_effects if item.size is state.size), None)
         size_prosperity = size_effect.prosperity if size_effect is not None else 0
-        self._add_prosperity(state, option.prosperity + size_prosperity, source=source)
+        environment = self.current_disaster(state)
+        printed_prosperity = option.prosperity
+        if (
+            not environment.optimizations
+            and option.prosperity_if_environment_has_no_optimizations is not None
+        ):
+            printed_prosperity = option.prosperity_if_environment_has_no_optimizations
+        self._add_prosperity(state, printed_prosperity + size_prosperity, source=source)
         self._add_prosperity(state, tag_bonus, source="tag")
-        prosperity = option.prosperity + size_prosperity + tag_bonus
+        prosperity = printed_prosperity + size_prosperity + tag_bonus
         state.current_round.shields.extend(option.shields)
         state.current_round.vulnerabilities.extend(option.vulnerabilities)
         state.current_round.environment_prosperity_loss_reduction += (
@@ -750,6 +757,11 @@ class GameEngine:
         state.current_round.bonus_draws += option.draw_cards
         state.pending_retention_bonus = min(2, state.pending_retention_bonus + option.retention_bonus)
         state.pending_candidate_bonus = min(2, state.pending_candidate_bonus + option.next_candidate_bonus)
+        if size_effect is not None:
+            state.pending_candidate_bonus = min(
+                2,
+                state.pending_candidate_bonus + size_effect.next_candidate_bonus,
+            )
         state.pending_candidate_trade_bonus = min(
             2,
             state.pending_candidate_trade_bonus

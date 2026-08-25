@@ -27,8 +27,8 @@ FINALE_IDS = {"army_ant_march", "fungus_garden_collapse", "extreme_heat_peak", "
 
 def test_pool_counts_and_unique_ids() -> None:
     assert len(STARTERS) == 3
-    assert len(NORMAL_TRAITS) == 64
-    assert len(TRAITS) == 67
+    assert len(NORMAL_TRAITS) == 105
+    assert len(TRAITS) == 108
     assert len(DISASTERS) == 12
     assert len({card.id for card in TRAITS}) == len(TRAITS)
     assert len({environment.id for environment in DISASTERS}) == len(DISASTERS)
@@ -72,7 +72,7 @@ def test_printed_tags_and_payoff_fallbacks_are_compact() -> None:
     cards = {card.id: card for card in TRAITS}
     assert all(sum(card.counted_root_tags.values()) <= 2 for card in NORMAL_TRAITS)
     assert all(card.fallback_options for card in NORMAL_TRAITS if card.design_role == "Payoff")
-    assert all(not (set(card.root_tags) & set(card.activation_requirements)) for card in NORMAL_TRAITS if card.design_role == "Payoff")
+    assert all(all(amount > 0 for amount in card.activation_requirements.values()) for card in NORMAL_TRAITS)
 
 
 def test_draws_are_few_and_gated() -> None:
@@ -182,7 +182,7 @@ def test_storage_cards_do_not_grant_shields() -> None:
 
 def test_v010_special_effects_and_payoff_roots() -> None:
     cards = {card.id: card for card in TRAITS}
-    assert all(len(card.root_tags) == 1 for card in NORMAL_TRAITS if card.design_role == "Payoff")
+    assert all(sum(card.counted_root_tags.values()) <= 2 for card in NORMAL_TRAITS)
     assert any(option.recover_lower_card for option in cards["harpegnathos_gamergate"].options)
     preview_ids = {
         "cephalotes_aerialis",
@@ -198,12 +198,6 @@ def test_v010_special_effects_and_payoff_roots() -> None:
 
 def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> None:
     cards = {card.id: card for card in TRAITS}
-    four_requirement_payoffs = {
-        "cephalotes_living_gate", "pheidole_supermajor_program", "megaponera_field_medicine",
-        "colobopsis_last_defense", "acromyrmex_antibiotic_garden", "pheidole_raid_wall",
-        "pheidole_seed_miller", "paraponera_poneratoxin", "pogonomyrmex_granary",
-        "solenopsis_dry_store",
-    }
     two_requirement_payoffs = {
         card.id for card in TRAITS
         if card.design_role == "Payoff" and sum(card.activation_requirements.values()) == 2
@@ -211,13 +205,11 @@ def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> Non
     v016_rebalanced = {
         "pheidole_supermajor_program", "megaponera_field_medicine",
         "colobopsis_last_defense", "acromyrmex_antibiotic_garden",
-        "paraponera_poneratoxin",
     }
-    unchanged = {
-        "cephalotes_living_gate", "pheidole_raid_wall", "pheidole_seed_miller",
-        "pogonomyrmex_granary", "solenopsis_dry_store",
-    }
+    unchanged = {"pheidole_seed_miller", "pogonomyrmex_granary", "solenopsis_dry_store"}
     assert all(max(option.prosperity for option in cards[card_id].options) == 3 for card_id in v016_rebalanced)
+    assert all(cards[card_id].options[0].prosperity == 3 for card_id in {"cephalotes_living_gate", "pheidole_raid_wall"})
+    assert cards["paraponera_poneratoxin"].options[1].prosperity == 3
     assert all(max(option.prosperity for option in cards[card_id].options) == 5 for card_id in unchanged)
     assert all(max(option.prosperity for option in cards[card_id].options) in {2, 3, 5} for card_id in two_requirement_payoffs)
     assert cards["pheidole_seed_miller"].options[0].tag_prosperity

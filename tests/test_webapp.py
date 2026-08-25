@@ -40,7 +40,7 @@ def test_sociality_has_japanese_name_and_dedicated_symbol():
 
 def test_card_catalog_exposes_every_trait_with_filters_and_sources():
     catalog = WebGameService().card_catalog()
-    assert catalog["count"] == len(catalog["cards"]) == 67
+    assert catalog["count"] == len(catalog["cards"]) == 108
     assert len(catalog["tags"]) == 5
     assert {"基盤", "橋渡し", "完成形", "初期形質"} <= set(catalog["roles"])
     assert all(card["name"] and card["text"] for card in catalog["cards"])
@@ -252,7 +252,7 @@ def test_real_http_server_serves_v012_page_and_rejects_non_object_json():
             assert len(config["problems"]) == 2
         with urlopen(base + "/api/cards", timeout=2) as response:
             cards = json.load(response)
-            assert cards["count"] == 67
+            assert cards["count"] == 108
         with urlopen(base + "/api/environment-data", timeout=2) as response:
             exported = json.load(response)
             assert exported["schema_version"] == "ant-game-environments-v0.12"

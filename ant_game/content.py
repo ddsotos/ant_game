@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from types import MappingProxyType
 
 from .models import (
@@ -20,6 +19,7 @@ from .models import (
     ShieldSpec,
     TraitCard,
 )
+from .trait_data import load_trait_cards
 
 
 ROOT_TAGS = frozenset({"Morphology", "Chemistry", "Sociality", "Nesting", "Resource Ecology"})
@@ -306,16 +306,10 @@ _OPTION_OVERRIDES: dict[str, tuple[ActionOption, ...]] = {
     ),
 }
 
+_V016_TRAITS = load_trait_cards()
+STARTERS = tuple(card for card in _V016_TRAITS if card.role is CardRole.STARTER)
 NORMAL_TRAITS: tuple[TraitCard, ...] = tuple(
-    replace(
-        card,
-        root_tags=frozenset({_PAYOFF_ROOT[card.id]}) if card.id in _PAYOFF_ROOT else card.root_tags,
-        activation_requirements=_PAYOFF_REQUIREMENTS.get(card.id, card.activation_requirements),
-        options=_OPTION_OVERRIDES.get(card.id, card.options),
-        source_taxon=_NEW_TRAIT_SOURCES.get(card.id, (card.source_taxon, card.biology_source))[0],
-        biology_source=_NEW_TRAIT_SOURCES.get(card.id, (card.source_taxon, card.biology_source))[1],
-    )
-    for card in _NORMAL_TRAITS_RAW
+    card for card in _V016_TRAITS if card.role is CardRole.ACTION
 )
 
 

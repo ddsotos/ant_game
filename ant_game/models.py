@@ -62,11 +62,16 @@ class SizeEffectSpec:
     shields: tuple[ShieldSpec, ...] = ()
     environment_prosperity_loss_reduction: int = 0
     vulnerabilities: tuple[ShieldSpec, ...] = ()
+    next_candidate_bonus: int = 0
 
     def __post_init__(self) -> None:
         if not isinstance(self.size, Size):
             raise TypeError("a size effect must name a Size")
-        if self.prosperity < 0 or self.environment_prosperity_loss_reduction < 0:
+        if (
+            self.prosperity < 0
+            or self.environment_prosperity_loss_reduction < 0
+            or self.next_candidate_bonus < 0
+        ):
             raise ValueError("size effect amounts must not be negative")
 
 
@@ -105,6 +110,9 @@ class ActionOption:
     # If the next retention step uses the normal keep-1/reveal-2 trade, reveal
     # this many additional candidates.  It never increases retention itself.
     candidate_bonus_when_reduce_retention_for_more_candidates: int = 0
+    # Replaces the printed prosperity when the current environment has no
+    # optimization routes. This models plasticity without card-id branches.
+    prosperity_if_environment_has_no_optimizations: int | None = None
     text: str = ""
 
     def __post_init__(self) -> None:
@@ -120,6 +128,11 @@ class ActionOption:
             raise ValueError("environment prosperity loss reduction must not be negative")
         if self.candidate_bonus_when_reduce_retention_for_more_candidates < 0:
             raise ValueError("candidate trade bonus must not be negative")
+        if (
+            self.prosperity_if_environment_has_no_optimizations is not None
+            and self.prosperity_if_environment_has_no_optimizations < 0
+        ):
+            raise ValueError("conditional prosperity must not be negative")
         if self.store_hand_card and self.storage_income_per_card <= 0:
             raise ValueError("a storage effect must have positive income")
         if self.store_hand_card and self.recover_lower_card:

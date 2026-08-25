@@ -193,6 +193,15 @@ CARD_TEXTS = {
     "atta_large_colony_worker_polymorphism": "体格の異なる働きアリが、大規模な巣で採餌・加工・育児を分担する。",
 }
 
+# The versioned JSON is authoritative for v0.16. Keep the older explicit
+# translations above as readable history, then fill and refresh every current
+# card from the canonical snapshot.
+from .trait_data import load_trait_cards
+
+_CURRENT_TRAITS = load_trait_cards()
+CARD_NAMES.update({card.id: card.name for card in _CURRENT_TRAITS})
+CARD_TEXTS.update({card.id: card.text for card in _CURRENT_TRAITS})
+
 
 def card_name(card_id: str, fallback: str = "") -> str:
     return CARD_NAMES.get(card_id, fallback or card_id)
@@ -252,7 +261,9 @@ def option_text(option: ActionOption) -> str:
         for vulnerability in effect.vulnerabilities:
             problem = PROBLEM_NAMES.get(vulnerability.problem_id, vulnerability.problem_id)
             details.append(f"{problem}脆弱性 +{vulnerability.amount}")
-        parts.append(f"{SIZE_LABELS.get(effect.size.name, effect.size.name)}なら" + "・".join(details))
+        if effect.next_candidate_bonus:
+            details.append(f"次ラウンドの公開候補 +{effect.next_candidate_bonus}枚")
+        parts.append(f"{SIZE_NAMES.get(effect.size.name, effect.size.name)}なら" + "・".join(details))
     if option.recover_lower_card:
         parts.append("同じ列の下段カード1枚を手札へ戻す")
     for tag, coefficient in option.tag_prosperity:
@@ -264,4 +275,9 @@ def option_text(option: ActionOption) -> str:
     if getattr(option, "store_hand_card", False):
         income = getattr(option, "storage_income_per_card", 0)
         parts.append(f"手札1枚を伏せて貯蔵（次ラウンド以降、毎ラウンド繁栄 +{income}）")
+    if option.prosperity_if_environment_has_no_optimizations is not None:
+        parts.append(
+            "最適化のない環境なら繁栄 +"
+            f"{option.prosperity_if_environment_has_no_optimizations}（通常値と置換）"
+        )
     return "／".join(parts) or "数値効果なし"
