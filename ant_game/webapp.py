@@ -377,7 +377,7 @@ class WebGameService:
             "environment_prosperity_loss_reduction": option.environment_prosperity_loss_reduction,
             "candidate_bonus_when_reduce_retention_for_more_candidates": option.candidate_bonus_when_reduce_retention_for_more_candidates,
             "prosperity_if_environment_has_no_optimizations": option.prosperity_if_environment_has_no_optimizations,
-            "size_effects": [{"size": item.size.name.lower(), "prosperity": item.prosperity, "next_candidate_bonus": item.next_candidate_bonus, "environment_prosperity_loss_reduction": item.environment_prosperity_loss_reduction, "shields": [{"problem_id": shield.problem_id, "amount": shield.amount} for shield in item.shields], "vulnerabilities": [{"problem_id": vulnerability.problem_id, "amount": vulnerability.amount} for vulnerability in item.vulnerabilities]} for item in option.size_effects],
+            "size_effects": [{"size": item.size.name.lower(), "prosperity": item.prosperity, "next_candidate_bonus": item.next_candidate_bonus, "environment_prosperity_loss_reduction": item.environment_prosperity_loss_reduction, "shields": [{"problem_id": shield.problem_id, "name": PROBLEM_NAMES.get(shield.problem_id, shield.problem_id), "amount": shield.amount} for shield in item.shields], "vulnerabilities": [{"problem_id": vulnerability.problem_id, "name": PROBLEM_NAMES.get(vulnerability.problem_id, vulnerability.problem_id), "amount": vulnerability.amount} for vulnerability in item.vulnerabilities]} for item in option.size_effects],
         }
 
     @classmethod

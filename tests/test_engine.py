@@ -629,10 +629,22 @@ def test_vulnerability_increases_only_its_matching_problem_before_shields():
 def test_size_effect_uses_the_size_selected_for_this_round():
     sized = TraitCard(
         "sized", "Sized", frozenset({"Morphology"}), CardRole.ACTION, {},
-        (ActionOption(size_effects=(
-            SizeEffectSpec(Size.SMALL, prosperity=1),
-            SizeEffectSpec(Size.MEDIUM, prosperity=3, shields=(ShieldSpec("raid", 1),)),
-        )),),
+        (ActionOption(
+            prosperity=5,
+            shields=(ShieldSpec("raid", 2),),
+            vulnerabilities=(ShieldSpec("sanitation", 2),),
+            environment_prosperity_loss_reduction=3,
+            size_effects=(
+                SizeEffectSpec(Size.SMALL, prosperity=1),
+                SizeEffectSpec(
+                    Size.MEDIUM,
+                    prosperity=3,
+                    shields=(ShieldSpec("raid", 1),),
+                    vulnerabilities=(ShieldSpec("sanitation", 1),),
+                    environment_prosperity_loss_reduction=1,
+                ),
+            ),
+        ),),
     )
     game = GameEngine(cards() + [sized], disasters(), seed=11)
     state = game.new_game()
@@ -641,12 +653,14 @@ def test_size_effect_uses_the_size_selected_for_this_round():
     game.activate(state, 0)
     assert state.current_round.activation_prosperity == 3
     assert [(item.problem_id, item.amount) for item in state.current_round.shields] == [("raid", 1)]
+    assert [(item.problem_id, item.amount) for item in state.current_round.vulnerabilities] == [("sanitation", 1)]
+    assert state.current_round.environment_prosperity_loss_reduction == 1
 
 
 def test_size_effect_can_add_next_round_candidates():
     sized = TraitCard(
         "sized-search", "Sized Search", frozenset({"Sociality"}), CardRole.ACTION, {},
-        (ActionOption(size_effects=(
+        (ActionOption(next_candidate_bonus=2, size_effects=(
             SizeEffectSpec(Size.LARGE, prosperity=2, next_candidate_bonus=1),
         )),),
     )

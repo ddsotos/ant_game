@@ -732,7 +732,6 @@ class GameEngine:
         if option.tag_prosperity_cap is not None:
             tag_bonus = min(tag_bonus, option.tag_prosperity_cap)
         size_effect = next((item for item in option.size_effects if item.size is state.size), None)
-        size_prosperity = size_effect.prosperity if size_effect is not None else 0
         environment = self.current_disaster(state)
         printed_prosperity = option.prosperity
         if (
@@ -740,28 +739,31 @@ class GameEngine:
             and option.prosperity_if_environment_has_no_optimizations is not None
         ):
             printed_prosperity = option.prosperity_if_environment_has_no_optimizations
-        self._add_prosperity(state, printed_prosperity + size_prosperity, source=source)
-        self._add_prosperity(state, tag_bonus, source="tag")
-        prosperity = printed_prosperity + size_prosperity + tag_bonus
-        state.current_round.shields.extend(option.shields)
-        state.current_round.vulnerabilities.extend(option.vulnerabilities)
-        state.current_round.environment_prosperity_loss_reduction += (
-            option.environment_prosperity_loss_reduction
+        resolved_prosperity = size_effect.prosperity if size_effect is not None else printed_prosperity
+        resolved_shields = size_effect.shields if size_effect is not None else option.shields
+        resolved_vulnerabilities = (
+            size_effect.vulnerabilities if size_effect is not None else option.vulnerabilities
         )
-        if size_effect is not None:
-            state.current_round.shields.extend(size_effect.shields)
-            state.current_round.vulnerabilities.extend(size_effect.vulnerabilities)
-            state.current_round.environment_prosperity_loss_reduction += (
-                size_effect.environment_prosperity_loss_reduction
-            )
+        resolved_environment_reduction = (
+            size_effect.environment_prosperity_loss_reduction
+            if size_effect is not None
+            else option.environment_prosperity_loss_reduction
+        )
+        resolved_candidate_bonus = (
+            size_effect.next_candidate_bonus if size_effect is not None else option.next_candidate_bonus
+        )
+        self._add_prosperity(state, resolved_prosperity, source=source)
+        self._add_prosperity(state, tag_bonus, source="tag")
+        prosperity = resolved_prosperity + tag_bonus
+        state.current_round.shields.extend(resolved_shields)
+        state.current_round.vulnerabilities.extend(resolved_vulnerabilities)
+        state.current_round.environment_prosperity_loss_reduction += resolved_environment_reduction
         state.current_round.bonus_draws += option.draw_cards
         state.pending_retention_bonus = min(2, state.pending_retention_bonus + option.retention_bonus)
-        state.pending_candidate_bonus = min(2, state.pending_candidate_bonus + option.next_candidate_bonus)
-        if size_effect is not None:
-            state.pending_candidate_bonus = min(
-                2,
-                state.pending_candidate_bonus + size_effect.next_candidate_bonus,
-            )
+        state.pending_candidate_bonus = min(
+            2,
+            state.pending_candidate_bonus + resolved_candidate_bonus,
+        )
         state.pending_candidate_trade_bonus = min(
             2,
             state.pending_candidate_trade_bonus

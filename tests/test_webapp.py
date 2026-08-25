@@ -1,6 +1,7 @@
 import json
 import threading
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -197,7 +198,22 @@ def test_card_effects_and_conditions_are_structured_data():
     for candidate in state["candidates"]:
         assert isinstance(candidate["options"], list)
         for option in candidate["options"]:
-            assert {"text", "prosperity", "draw_cards", "shields", "retention_bonus", "store_hand_card", "storage_income_per_card", "tag_prosperity", "tag_prosperity_cap", "tag_prosperity_divisor"} <= set(option)
+            assert {"text", "prosperity", "draw_cards", "shields", "retention_bonus", "store_hand_card", "storage_income_per_card", "tag_prosperity", "tag_prosperity_cap", "tag_prosperity_divisor", "vulnerabilities", "environment_prosperity_loss_reduction", "candidate_bonus_when_reduce_retention_for_more_candidates", "prosperity_if_environment_has_no_optimizations", "size_effects"} <= set(option)
+
+
+def test_v016_special_effects_are_exposed_for_both_browser_views():
+    service = WebGameService()
+    catalog = {card["card_id"]: card for card in service.card_catalog()["cards"]}
+    assert catalog["eciton_bivouac"]["options"][0]["size_effects"][2]["vulnerabilities"][0]["name"] == "衛生"
+    assert catalog["camponotus_developmental_trophallaxis"]["options"][0]["prosperity_if_environment_has_no_optimizations"] == 5
+    assert catalog["temnothorax_tandem_teaching"]["options"][0]["candidate_bonus_when_reduce_retention_for_more_candidates"] == 1
+    assert catalog["pogonomyrmex_age_polyethism"]["on_pushed_out"]["prosperity"] == 5
+
+    static_dir = Path(__file__).parents[1] / "ant_game" / "web_static"
+    for filename in ("app.js", "cards.js"):
+        javascript = (static_dir / filename).read_text(encoding="utf-8")
+        for label in ("脆弱性", "最適化失敗時の繁栄損失", "保持上限−1", "最適化のない環境", "時の置換値", "押し出し時効果"):
+            assert label in javascript
 
 
 def test_specialist_tag_multiplicity_is_exposed_to_the_browser():
