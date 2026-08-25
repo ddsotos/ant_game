@@ -15,6 +15,8 @@ NEW_CARD_IDS = {
     "lasius_trophallaxis", "azteca_domatia", "formica_self_medication", "atta_acid_pharmacy", "camponotus_saliva_care",
     "acromyrmex_phenylacetic_acid", "atta_hard_mandible", "pheidole_bite_muscle", "melophorus_ocelli",
     "temnothorax_worker_size", "pogonomyrmex_seed_sorting", "camponotus_amputation",
+    "melissotarsus_living_wood_galleries", "allomerus_fungal_trap_gallery",
+    "formica_thatch_thermostat", "atta_large_colony_worker_polymorphism",
 }
 SHORT_GAME_SPECIES_IDS = {
     "lasius_sealed_foundation", "platythyrea_clone_watch", "ooceraea_synchronized_brood",
@@ -25,8 +27,8 @@ FINALE_IDS = {"army_ant_march", "fungus_garden_collapse", "extreme_heat_peak", "
 
 def test_pool_counts_and_unique_ids() -> None:
     assert len(STARTERS) == 3
-    assert len(NORMAL_TRAITS) == 60
-    assert len(TRAITS) == 63
+    assert len(NORMAL_TRAITS) == 64
+    assert len(TRAITS) == 67
     assert len(DISASTERS) == 12
     assert len({card.id for card in TRAITS}) == len(TRAITS)
     assert len({environment.id for environment in DISASTERS}) == len(DISASTERS)
@@ -84,6 +86,39 @@ def test_strong_shields_are_gated() -> None:
         maximum = max((shield.amount for option in card.options for shield in option.shields), default=0)
         if maximum >= 3:
             assert card.activation_requirements
+
+
+def test_v016_balance_snapshot_effects_are_preserved() -> None:
+    cards = {card.id: card for card in TRAITS}
+    expected_two = {
+        "pheidole_supermajor_program": "raid",
+        "megaponera_field_medicine": "sanitation",
+        "colobopsis_last_defense": "raid",
+        "acromyrmex_antibiotic_garden": "sanitation",
+    }
+    for card_id, problem in expected_two.items():
+        option = cards[card_id].options[0]
+        assert option.prosperity == 3
+        assert [(item.problem_id, item.amount) for item in option.shields] == [(problem, 2)]
+
+    paraponera = cards["paraponera_poneratoxin"]
+    assert sum(paraponera.activation_requirements.values()) == 3
+    assert max(item.amount for option in paraponera.options for item in option.shields) == 3
+
+    bite = cards["pheidole_bite_muscle"].options[0]
+    assert bite.prosperity == 3
+    assert [(item.problem_id, item.amount) for item in bite.shields] == [("raid", 3)]
+    for card_id in {"melissotarsus_living_wood_galleries", "formica_thatch_thermostat"}:
+        option = cards[card_id].options[0]
+        assert option.prosperity == 5
+        assert option.environment_prosperity_loss_reduction == 2
+    allomerus = cards["allomerus_fungal_trap_gallery"].options[0]
+    assert allomerus.prosperity == 5
+    assert [(item.problem_id, item.amount) for item in allomerus.shields] == [("raid", 2)]
+    atta = cards["atta_large_colony_worker_polymorphism"]
+    assert atta.counted_root_tags["Morphology"] == 2
+    assert atta.options[0].prosperity == 4
+    assert [(item.problem_id, item.amount) for item in atta.options[0].vulnerabilities] == [("sanitation", 1)]
 
 
 def test_environments_have_two_or_zero_optimizations_and_problem_rules() -> None:
@@ -173,7 +208,17 @@ def test_payoff_values_and_biology_riders_are_distinct_from_foundations() -> Non
         card.id for card in TRAITS
         if card.design_role == "Payoff" and sum(card.activation_requirements.values()) == 2
     }
-    assert all(max(option.prosperity for option in cards[card_id].options) == 5 for card_id in {card.id for card in NORMAL_TRAITS if card.design_role == "Payoff" and card.id in {"cephalotes_living_gate", "pheidole_supermajor_program", "megaponera_field_medicine", "colobopsis_last_defense", "acromyrmex_antibiotic_garden", "pheidole_raid_wall", "pheidole_seed_miller", "paraponera_poneratoxin", "pogonomyrmex_granary", "solenopsis_dry_store"}})
+    v016_rebalanced = {
+        "pheidole_supermajor_program", "megaponera_field_medicine",
+        "colobopsis_last_defense", "acromyrmex_antibiotic_garden",
+        "paraponera_poneratoxin",
+    }
+    unchanged = {
+        "cephalotes_living_gate", "pheidole_raid_wall", "pheidole_seed_miller",
+        "pogonomyrmex_granary", "solenopsis_dry_store",
+    }
+    assert all(max(option.prosperity for option in cards[card_id].options) == 3 for card_id in v016_rebalanced)
+    assert all(max(option.prosperity for option in cards[card_id].options) == 5 for card_id in unchanged)
     assert all(max(option.prosperity for option in cards[card_id].options) in {2, 3, 5} for card_id in two_requirement_payoffs)
     assert cards["pheidole_seed_miller"].options[0].tag_prosperity
     assert cards["mycocepurus_clonal_garden"].options[0].tag_prosperity
